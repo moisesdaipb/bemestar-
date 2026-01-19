@@ -1,0 +1,7 @@
+{
+  "name": "Vitalidade - Portal de Bem-estar",
+  "description": "Uma plataforma completa para colaboradores gerenciarem agendamentos de bem-estar, consultoria financeira e jurídica.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
