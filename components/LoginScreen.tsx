@@ -172,10 +172,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
                     Criar conta
                 </button>
 
-                {/* Admin login note */}
-                <p className="mt-4 text-xs text-center text-text-muted">
-                    Administradores podem usar email e senha acima
-                </p>
+
             </div>
 
             {/* Forgot Password Modal */}

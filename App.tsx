@@ -113,8 +113,8 @@ const AppContent: React.FC = () => {
     setCurrentScreen(Screen.SUPER_ADMIN);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setSelectedCompanyForRegister(null);
     setCurrentScreen(Screen.LOGIN);
   };

@@ -90,9 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, user, on
               <span className="font-medium">Sair</span>
             </button>
           )}
-          <p className="text-xs text-text-muted text-center mt-4">
-            Dados armazenados localmente
-          </p>
+
         </div>
       </div>
     </>

@@ -444,7 +444,14 @@ export const loginWithMicrosoft = async (): Promise<{
 };
 
 export const logout = async (): Promise<void> => {
-    await supabase.auth.signOut();
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error('Logout error:', error);
+        }
+    } catch (err) {
+        console.error('Logout exception:', err);
+    }
 };
 
 export const getCurrentUser = async (existingSession?: { user: { id: string; email?: string; user_metadata?: Record<string, unknown>; email_confirmed_at?: string; identities?: Array<{ provider: string }> } } | null): Promise<AuthUser | null> => {

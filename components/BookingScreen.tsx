@@ -300,11 +300,6 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ programId, onBack, onConf
                                                     <span className={`font-bold ${isAvailable && !isPast && isCurrentMonth ? 'text-white' : ''}`}>
                                                         {date.getDate()}
                                                     </span>
-                                                    {isAvailable && !isPast && isCurrentMonth && (
-                                                        <span className="text-[9px] font-medium text-white/90 -mt-0.5">
-                                                            {slotsAvailable} {slotsAvailable === 1 ? 'vaga' : 'vagas'}
-                                                        </span>
-                                                    )}
                                                 </button>
                                             );
                                         })}
@@ -313,22 +308,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ programId, onBack, onConf
                             </div>
                         </div>
 
-                        {/* Legend */}
-                        <div className="flex items-center justify-center gap-6 mt-4 text-xs text-text-muted">
-                            <div className="flex items-center gap-2">
-                                <div
-                                    className="size-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold"
-                                    style={{ backgroundColor: program.cor }}
-                                >
-                                    5
-                                </div>
-                                <span>Vagas disp.</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="size-6 rounded-lg bg-gray-200 dark:bg-gray-700" />
-                                <span>Indisponível</span>
-                            </div>
-                        </div>
+
                     </div>
                 )}
 

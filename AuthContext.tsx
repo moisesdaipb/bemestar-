@@ -30,24 +30,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         // Check for existing session on mount
         const initAuth = async () => {
+            console.log('initAuth started');
             try {
                 // Get session once and reuse for both functions
                 const { data: { session } } = await supabase.auth.getSession();
+                console.log('Session obtained:', session ? 'exists' : 'null');
 
                 if (session?.user) {
+                    console.log('Getting current user...');
                     // Pass session to avoid redundant getUser calls
                     const currentUser = await getCurrentUser(session);
+                    console.log('Current user obtained:', currentUser ? currentUser.email : 'null');
                     setUser(currentUser);
 
                     // Check if existing user needs profile completion (passing user data)
+                    console.log('Checking profile completion...');
                     const needsCompletion = await checkNeedsProfileCompletion(session.user);
+                    console.log('Needs completion:', needsCompletion);
                     setNeedsProfileCompletion(needsCompletion);
                 } else {
+                    console.log('No session, setting user to null');
                     setUser(null);
                 }
             } catch (error) {
                 console.error('Error initializing auth:', error);
             } finally {
+                console.log('initAuth finished, setting isLoading to false');
                 setIsLoading(false);
             }
         };
@@ -121,9 +129,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const handleLogout = async () => {
-        await logout();
+        console.log('handleLogout called');
+        try {
+            await logout();
+            console.log('logout completed');
+        } catch (err) {
+            console.error('handleLogout error:', err);
+        }
         setUser(null);
         setNeedsProfileCompletion(false);
+        console.log('state cleared');
     };
 
     const markProfileComplete = () => {
