@@ -217,9 +217,16 @@ export const completeUserProfile = async (nome: string, password: string): Promi
 };
 
 // Check if user needs to complete profile (new magic link user without password)
-export const checkNeedsProfileCompletion = async (): Promise<boolean> => {
+export const checkNeedsProfileCompletion = async (existingUser?: { id: string; email?: string; email_confirmed_at?: string | null; identities?: Array<{ provider: string }> } | null): Promise<boolean> => {
     try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // Use existing user if provided, otherwise fetch from Supabase
+        let user;
+        if (existingUser) {
+            user = existingUser;
+        } else {
+            const { data: { user: fetchedUser } } = await supabase.auth.getUser();
+            user = fetchedUser;
+        }
         if (!user) return false;
 
         // Check if user came from magic link (has confirmation but no password set)
@@ -440,9 +447,16 @@ export const logout = async (): Promise<void> => {
     await supabase.auth.signOut();
 };
 
-export const getCurrentUser = async (): Promise<AuthUser | null> => {
+export const getCurrentUser = async (existingSession?: { user: { id: string; email?: string; user_metadata?: Record<string, unknown>; email_confirmed_at?: string; identities?: Array<{ provider: string }> } } | null): Promise<AuthUser | null> => {
     try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // Use existing session user if provided, otherwise fetch from Supabase
+        let user;
+        if (existingSession?.user) {
+            user = existingSession.user;
+        } else {
+            const { data: { user: fetchedUser } } = await supabase.auth.getUser();
+            user = fetchedUser;
+        }
 
         if (!user) return null;
 

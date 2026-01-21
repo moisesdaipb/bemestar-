@@ -31,13 +31,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Check for existing session on mount
         const initAuth = async () => {
             try {
-                const currentUser = await getCurrentUser();
-                setUser(currentUser);
+                // Get session once and reuse for both functions
+                const { data: { session } } = await supabase.auth.getSession();
 
-                // Check if existing user needs profile completion
-                if (currentUser) {
-                    const needsCompletion = await checkNeedsProfileCompletion();
+                if (session?.user) {
+                    // Pass session to avoid redundant getUser calls
+                    const currentUser = await getCurrentUser(session);
+                    setUser(currentUser);
+
+                    // Check if existing user needs profile completion (passing user data)
+                    const needsCompletion = await checkNeedsProfileCompletion(session.user);
                     setNeedsProfileCompletion(needsCompletion);
+                } else {
+                    setUser(null);
                 }
             } catch (error) {
                 console.error('Error initializing auth:', error);
@@ -57,20 +63,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 console.log('Password recovery event detected');
                 setIsPasswordRecovery(true);
                 if (session?.user) {
-                    const currentUser = await getCurrentUser();
+                    // Pass session to avoid redundant getUser call
+                    const currentUser = await getCurrentUser(session);
                     setUser(currentUser);
                 }
                 return;
             }
 
             if (event === 'SIGNED_IN' && session?.user) {
-                const currentUser = await getCurrentUser();
+                // Pass session to avoid redundant getUser call
+                const currentUser = await getCurrentUser(session);
                 setUser(currentUser);
 
                 // Check if this user needs to complete profile (magic link users)
                 // But not if we're in password recovery mode
                 if (!isPasswordRecovery) {
-                    const needsCompletion = await checkNeedsProfileCompletion();
+                    const needsCompletion = await checkNeedsProfileCompletion(session.user);
                     console.log('Needs profile completion:', needsCompletion);
                     setNeedsProfileCompletion(needsCompletion);
                 }
@@ -78,6 +86,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser(null);
                 setNeedsProfileCompletion(false);
                 setIsPasswordRecovery(false);
+            } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+                // On token refresh, update user with new session data
+                const currentUser = await getCurrentUser(session);
+                setUser(currentUser);
             }
         });
 
