@@ -5,6 +5,7 @@ import { AuthUser, UserRole, Company } from './types';
 const dbToCompany = (db: DbCompany): Company => ({
     id: db.id,
     nome: db.nome,
+    nomeBanner: db.nome_banner,
     slug: db.slug,
     logoUrl: db.logo_url,
     bannerUrl: db.banner_url,
@@ -265,6 +266,7 @@ export const createCompany = async (company: Omit<Company, 'id' | 'criadoEm'>): 
             .from('companies')
             .insert({
                 nome: company.nome,
+                nome_banner: company.nomeBanner,
                 slug: company.slug.toLowerCase().trim(),
                 logo_url: company.logoUrl,
                 banner_url: company.bannerUrl,
@@ -288,6 +290,7 @@ export const updateCompany = async (id: string, updates: Partial<Omit<Company, '
     try {
         const dbUpdates: Partial<DbCompany> = {};
         if (updates.nome !== undefined) dbUpdates.nome = updates.nome;
+        if (updates.nomeBanner !== undefined) dbUpdates.nome_banner = updates.nomeBanner;
         if (updates.slug !== undefined) dbUpdates.slug = updates.slug.toLowerCase().trim();
         if (updates.logoUrl !== undefined) dbUpdates.logo_url = updates.logoUrl;
         if (updates.bannerUrl !== undefined) dbUpdates.banner_url = updates.bannerUrl;

@@ -27,6 +27,7 @@ export type UserRole = 'super_admin' | 'admin' | 'user';
 export interface Company {
   id: string;
   nome: string;
+  nomeBanner: string | null; // Nome exibido no banner (ex: "Grupo Marista")
   slug: string;
   logoUrl: string | null;
   bannerUrl: string | null;

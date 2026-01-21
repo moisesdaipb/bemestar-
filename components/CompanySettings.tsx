@@ -30,6 +30,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
     const [corPrimaria, setCorPrimaria] = useState('#22c55e');
     const [corSecundaria, setCorSecundaria] = useState('#0d9488');
     const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+    const [nomeBanner, setNomeBanner] = useState('');
     const [dominiosEmail, setDominiosEmail] = useState<string[]>([]);
     const [novoDominio, setNovoDominio] = useState('');
     const [uploading, setUploading] = useState(false);
@@ -40,6 +41,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
             setCorPrimaria(user.company.corPrimaria);
             setCorSecundaria(user.company.corSecundaria || '#0d9488');
             setBannerUrl(user.company.bannerUrl);
+            setNomeBanner(user.company.nomeBanner || user.company.nome || '');
             setDominiosEmail(user.company.dominiosEmail || []);
         }
     }, [user]);
@@ -109,6 +111,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                 corPrimaria,
                 corSecundaria,
                 bannerUrl,
+                nomeBanner: nomeBanner.trim() || null,
                 dominiosEmail,
             });
 
@@ -154,7 +157,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                                 <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/70"></div>
                                 <div className="absolute bottom-3 left-4 text-white">
                                     <p className="text-xs text-white/60">Bem-vindo ao</p>
-                                    <p className="font-bold">{user?.company?.nome || 'Sua Empresa'}</p>
+                                    <p className="font-bold">{nomeBanner || user?.company?.nome || 'Sua Empresa'}</p>
                                 </div>
                             </div>
                         ) : (
@@ -167,7 +170,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                                 </div>
                                 <div className="absolute bottom-3 left-4 text-white">
                                     <p className="text-xs text-white/60">Bem-vindo ao</p>
-                                    <p className="font-bold">{user?.company?.nome || 'Sua Empresa'}</p>
+                                    <p className="font-bold">{nomeBanner || user?.company?.nome || 'Sua Empresa'}</p>
                                 </div>
                             </div>
                         )}
@@ -210,6 +213,23 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                                 />
                             </label>
                         )}
+                    </div>
+                </div>
+
+                {/* Nome no Banner */}
+                <div className="mb-6">
+                    <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Nome no Banner</p>
+                    <div className="p-4 rounded-xl bg-white dark:bg-white/5 border border-card-border dark:border-white/10">
+                        <input
+                            type="text"
+                            value={nomeBanner}
+                            onChange={e => setNomeBanner(e.target.value)}
+                            placeholder="Ex: Grupo Marista"
+                            className="w-full px-4 py-3 rounded-xl border border-card-border dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[#131616] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                        />
+                        <p className="text-xs text-text-muted mt-2">
+                            Este texto aparece após "Bem-vindo ao" na tela inicial
+                        </p>
                     </div>
                 </div>
 

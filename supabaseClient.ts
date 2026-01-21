@@ -13,6 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface DbCompany {
   id: string;
   nome: string;
+  nome_banner: string | null;
   slug: string;
   logo_url: string | null;
   banner_url: string | null;

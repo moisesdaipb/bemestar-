@@ -49,7 +49,7 @@ const Home: React.FC<HomeProps> = ({ onOpenSidebar, onNavigate }) => {
   const primaryColor = user?.company?.corPrimaria || '#22c55e';
   const secondaryColor = user?.company?.corSecundaria || '#0d9488';
   const bannerUrl = user?.company?.bannerUrl;
-  const companyName = user?.company?.nome || 'BemEstar+';
+  const companyName = user?.company?.nomeBanner || user?.company?.nome || 'BemEstar+';
 
   if (loading) {
     return (
