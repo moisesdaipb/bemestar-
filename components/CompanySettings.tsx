@@ -106,6 +106,17 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
         if (!user?.companyId) return;
 
         setSaving(true);
+
+        // Safety timeout - unlock button after 15s if no response
+        const timeoutId = setTimeout(() => {
+            setSaving(prev => {
+                if (prev) {
+                    alert('O servidor está demorando para responder. Verifique sua conexão e tente novamente em instantes.');
+                }
+                return false;
+            });
+        }, 15000);
+
         try {
             console.log('UI Action: handleSave company updates', dominiosEmail);
             const success = await updateCompany(user.companyId, {
@@ -116,15 +127,18 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                 dominiosEmail,
             });
 
+            clearTimeout(timeoutId);
+
             if (success) {
                 alert('Configurações salvas com sucesso! Faça login novamente para ver as mudanças.');
                 onSave();
             } else {
-                alert('Erro ao salvar configurações');
+                alert('O banco de dados recusou a alteração. Verifique se você tem permissões de administrador.');
             }
         } catch (error) {
+            clearTimeout(timeoutId);
             console.error('Error saving settings:', error);
-            alert('Erro ao salvar configurações');
+            alert('Erro inesperado ao salvar configurações.');
         } finally {
             setSaving(false);
         }
