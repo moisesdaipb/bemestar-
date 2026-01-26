@@ -133,9 +133,9 @@ export const sendRegistrationLink = async (email: string): Promise<{
 
         const { data: emailExists } = await withTimeout(
             supabase.rpc('check_email_exists', { check_email: email.toLowerCase().trim() }) as any,
-            10000,
+            15000,
             'Tempo esgotado ao verificar email.'
-        );
+        ) as any;
 
         if (emailExists) {
             return {
@@ -144,25 +144,29 @@ export const sendRegistrationLink = async (email: string): Promise<{
             };
         }
 
-        const { error } = await supabase.auth.signInWithOtp({
-            email: email.toLowerCase().trim(),
-            options: {
-                emailRedirectTo: `${window.location.origin}?register=true&email=${encodeURIComponent(email)}&companyId=${company.id}`,
-                data: {
-                    company_id: company.id,
-                    company_name: company.nome,
+        const { error } = await withTimeout(
+            supabase.auth.signInWithOtp({
+                email: email.toLowerCase().trim(),
+                options: {
+                    emailRedirectTo: `${window.location.origin}?register=true&email=${encodeURIComponent(email)}&companyId=${company.id}`,
+                    data: {
+                        company_id: company.id,
+                        company_name: company.nome,
+                    }
                 }
-            }
-        });
+            }),
+            30000,
+            'O servidor demorou para responder ao enviar o código de acesso.'
+        ) as any;
 
         if (error) {
             return { success: false, error: `Erro ao enviar email: ${error.message}` };
         }
 
         return { success: true, company };
-    } catch (err) {
+    } catch (err: any) {
         console.error('Send registration link exception:', err);
-        return { success: false, error: 'Erro inesperado ao processar cadastro.' };
+        return { success: false, error: err.message || 'Erro inesperado ao processar cadastro.' };
     }
 };
 
@@ -296,7 +300,7 @@ export const updateCompany = async (id: string, updates: Partial<Omit<Company, '
             }) as any,
             30000,
             'O servidor demorou para responder.'
-        );
+        ) as any;
 
         if (error) {
             console.error('Supabase RPC update error:', error.message);
@@ -377,7 +381,7 @@ export const login = async (
             }),
             20000,
             'Tempo esgotado ao conectar com o servidor.'
-        );
+        ) as any;
 
         if (error) {
             if (error.message.includes('Invalid login credentials')) {
@@ -396,7 +400,7 @@ export const login = async (
                 .single() as any,
             15000,
             'Conectado, mas houve demora ao carregar seu perfil.'
-        );
+        ) as any;
 
         if (profile?.role !== 'super_admin' && profile?.companies && !profile.companies.ativo) {
             await supabase.auth.signOut();
@@ -457,7 +461,7 @@ export const getCurrentUser = async (existingSession?: any): Promise<AuthUser | 
                 supabase.auth.getUser() as any,
                 10000,
                 'Tempo esgotado ao buscar usuário.'
-            );
+            ) as any;
             user = fetchedUser;
         }
 
@@ -471,7 +475,7 @@ export const getCurrentUser = async (existingSession?: any): Promise<AuthUser | 
                 .single() as any,
             12000,
             'Tempo esgotado ao carregar perfil.'
-        );
+        ) as any;
 
         if (!profile && user.email) {
             console.log('Profile not found, attempting auto-creation...');
@@ -494,7 +498,7 @@ export const getCurrentUser = async (existingSession?: any): Promise<AuthUser | 
                     .single() as any,
                 10000,
                 'Erro ao criar perfil automaticamente.'
-            );
+            ) as any;
 
             profile = newProfile;
         }

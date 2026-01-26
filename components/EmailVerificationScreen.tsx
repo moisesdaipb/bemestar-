@@ -36,7 +36,7 @@ const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = ({ onNav
         const timeoutId = setTimeout(() => {
             setLoading(false);
             setErro('A solicitação está demorando mais que o esperado. Por favor, verifique sua conexão ou tente novamente.');
-        }, 15000);
+        }, 30000);
 
         try {
             const result = await sendRegistrationLink(cleanEmail);
