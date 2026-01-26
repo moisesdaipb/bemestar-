@@ -55,12 +55,13 @@ export const clearLocalSession = () => {
 
 // Generic timeout wrapper for promises
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    // Wrap promise in a way that satisfies both Promise and PostgrestBuilder if needed
     return Promise.race([
-        promise,
+        promise as any,
         new Promise<T>((_, reject) =>
             setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
         )
-    ]);
+    ]) as Promise<T>;
 };
 
 // ==================== COMPANY FUNCTIONS ====================
@@ -322,7 +323,7 @@ export const createCompany = async (company: Omit<Company, 'id' | 'criadoEm'>): 
             .from('companies')
             .insert({
                 nome: company.nome,
-                nome_banner: company.nome_banner,
+                nome_banner: company.nomeBanner,
                 slug: company.slug.toLowerCase().trim(),
                 logo_url: company.logoUrl,
                 banner_url: company.bannerUrl,
@@ -344,6 +345,7 @@ export const createCompany = async (company: Omit<Company, 'id' | 'criadoEm'>): 
 
 export const updateCompany = async (id: string, updates: Partial<Omit<Company, 'id' | 'criadoEm'>>): Promise<boolean> => {
     try {
+        console.log('Action: updating company', id, 'with updates:', updates);
         const dbUpdates: Partial<DbCompany> = {};
         if (updates.nome !== undefined) dbUpdates.nome = updates.nome;
         if (updates.nomeBanner !== undefined) dbUpdates.nome_banner = updates.nomeBanner;
@@ -355,14 +357,21 @@ export const updateCompany = async (id: string, updates: Partial<Omit<Company, '
         if (updates.dominiosEmail !== undefined) dbUpdates.dominios_email = updates.dominiosEmail;
         if (updates.ativo !== undefined) dbUpdates.ativo = updates.ativo;
 
-        const { error } = await supabase
+        const { error, data, status } = await supabase
             .from('companies')
             .update(dbUpdates)
-            .eq('id', id);
+            .eq('id', id)
+            .select();
 
-        return !error;
+        if (error) {
+            console.error('Supabase update company error:', error.message, 'Status:', status);
+            return false;
+        }
+
+        console.log('Supabase update company success. Status:', status, 'Data returned:', data);
+        return true;
     } catch (err) {
-        console.error('Update company error:', err);
+        console.error('Update company exception:', err);
         return false;
     }
 };
@@ -524,10 +533,7 @@ export const loginWithMicrosoft = async (): Promise<{
 
 export const logout = async (): Promise<void> => {
     try {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            console.error('Logout error:', error);
-        }
+        await supabase.auth.signOut();
     } catch (err) {
         console.error('Logout exception:', err);
     }

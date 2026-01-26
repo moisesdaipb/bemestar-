@@ -107,6 +107,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
 
         setSaving(true);
         try {
+            console.log('UI Action: handleSave company updates', dominiosEmail);
             const success = await updateCompany(user.companyId, {
                 corPrimaria,
                 corSecundaria,
