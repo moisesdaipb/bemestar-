@@ -1,6 +1,6 @@
 # BemEstar+ - Bem-estar Corporativo
 
-Portal de agendamento de programas de bem-estar corporativo.
+Portal de agendamento de programas de bem-estar corporativo para empresas.
 
 ## 🚀 Deploy na Vercel
 
