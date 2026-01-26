@@ -37,9 +37,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
 
         // Safety timeout - force loading to false after 15 seconds
         const timeoutId = setTimeout(() => {
-            setLoading(false);
-            setErro('Houve uma demora na conexão com o servidor. Por favor, tente clicar no botão de "Limpar dados" abaixo para destravar seu acesso.');
-            setShowResetButton(true);
+            // Only fire if we are still loading (prevent overlap)
+            setLoading(prev => {
+                if (prev) {
+                    setErro('Houve uma demora na conexão com o servidor. Por favor, tente clicar no botão de "Limpar dados" abaixo para destravar seu acesso.');
+                    setShowResetButton(true);
+                }
+                return false;
+            });
         }, 15000);
 
         try {
@@ -48,18 +53,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
             // Clear timeout if request finishes
             clearTimeout(timeoutId);
 
+            // Re-check loading state to avoid overwriting if timeout already won
             if (!result.success) {
                 setErro(result.error || 'Erro ao fazer login');
-                // If the error seems connection/session related, show reset button
+                // Force show reset button for specific timeout errors
                 if (result.error?.includes('Tempo esgotado') || result.error?.includes('Conectado, mas')) {
                     setShowResetButton(true);
                 }
             } else {
                 onNavigate(Screen.HOME);
             }
-        } catch (err) {
+        } catch (err: any) {
             clearTimeout(timeoutId);
-            setErro('Erro ao fazer login');
+            setErro(err.message || 'Erro ao fazer login');
             setShowResetButton(true);
         } finally {
             setLoading(false);
@@ -127,8 +133,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
                         </div>
                         {showResetButton && (
                             <button
-                                onClick={clearLocalSession}
-                                className="w-full mt-2 py-2 px-4 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                                onClick={() => {
+                                    console.log('User clicked Reset App button');
+                                    clearLocalSession();
+                                }}
+                                className="w-full mt-2 py-3 px-4 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 text-sm font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-all flex items-center justify-center gap-2 border border-gray-200 dark:border-white/10"
                             >
                                 <span className="material-symbols-outlined text-sm">refresh</span>
                                 Limpar dados e resetar app

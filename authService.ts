@@ -19,29 +19,36 @@ const dbToCompany = (db: DbCompany): Company => ({
 // ==================== SESSION HELPERS ====================
 
 // Clear all local session data to resolve corrupted states
-export const clearLocalSession = async (): Promise<void> => {
-    try {
-        console.log('Force clearing local session data...');
-        // Clear Supabase session (local only to avoid hangs)
-        await supabase.auth.signOut({ scope: 'local' });
+// Improved to be faster and more forceful with reloads
+export const clearLocalSession = () => {
+    console.log('Action: nuclear session cleanup triggered');
 
-        // Clear browser storage
+    try {
+        // Clear all storage immediately
         localStorage.clear();
         sessionStorage.clear();
 
-        // Clear specific Supabase keys just in case
+        // Remove Supabase-specific items just in case clear() missed something
+        const keysToRemove = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key?.startsWith('sb-')) {
-                localStorage.removeItem(key);
-            }
+            if (key?.startsWith('sb-')) keysToRemove.push(key);
         }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
 
-        console.log('Session cleanup completed. Reloading...');
-        window.location.reload();
+        // Non-blocking sign out attempt
+        try {
+            supabase.auth.signOut({ scope: 'local' }).catch(() => { });
+        } catch (e) { }
+
+        console.log('Cleanup successful. Redirecting...');
+
+        // Force reload to the clean origin
+        setTimeout(() => {
+            window.location.href = window.location.origin;
+        }, 50);
     } catch (err) {
-        console.error('Error clearing local session:', err);
-        // Fallback to basic reload
+        console.error('Critical error in cleanup:', err);
         window.location.reload();
     }
 };
