@@ -347,6 +347,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
                   .map(booking => {
                     const program = programs.find(p => p.id === booking.programaId);
+                    const bookingDate = new Date(`${booking.data}T${booking.horario}:00`);
+                    const isPast = bookingDate < new Date();
+
                     return (
                       <div
                         key={booking.id}
@@ -363,6 +366,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                             <p className="font-semibold text-[#131616] dark:text-white">{booking.usuarioNome}</p>
                             <p className="text-xs text-text-muted">{booking.usuarioEmail}</p>
                           </div>
+                          {isPast && (
+                            <span className="px-2 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold uppercase">
+                              Realizado
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 mt-3 text-sm text-text-muted">
                           <span className="flex items-center gap-1">
@@ -378,16 +386,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                           </span>
                         </div>
 
-                        {/* Botão Cancelar */}
-                        <div className="mt-3 pt-3 border-t border-card-border dark:border-white/10">
-                          <button
-                            onClick={() => handleCancelBooking(booking)}
-                            className="w-full py-2 rounded-xl bg-red-500/10 text-red-500 font-medium text-sm hover:bg-red-500/20 transition-colors flex items-center justify-center gap-1"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">cancel</span>
-                            Cancelar Agendamento
-                          </button>
-                        </div>
+                        {/* Botão Cancelar - Apenas se não for passado */}
+                        {!isPast && (
+                          <div className="mt-3 pt-3 border-t border-card-border dark:border-white/10">
+                            <button
+                              onClick={() => handleCancelBooking(booking)}
+                              className="w-full py-2 rounded-xl bg-red-500/10 text-red-500 font-medium text-sm hover:bg-red-500/20 transition-colors flex items-center justify-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">cancel</span>
+                              Cancelar Agendamento
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

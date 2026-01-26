@@ -48,10 +48,26 @@ const MyBookings: React.FC<MyBookingsProps> = ({ onBack }) => {
         }
     };
 
-    const today = new Date().toISOString().split('T')[0];
-    const activeBookings = bookings.filter(b => b.status === 'confirmado' && b.data >= today);
-    const pastBookings = bookings.filter(b => b.status !== 'confirmado' || b.data < today);
-    const completedBookings = pastBookings.filter(b => b.status === 'confirmado' && b.data < today);
+    const now = new Date();
+
+    // Improved categorization using both date and time
+    const activeBookings = bookings
+        .filter(b => {
+            if (b.status !== 'confirmado') return false;
+            const bDate = new Date(`${b.data}T${b.horario}:00`);
+            return bDate >= now;
+        })
+        .sort((a, b) => new Date(`${a.data}T${a.horario}`).getTime() - new Date(`${b.data}T${b.horario}`).getTime());
+
+    const pastBookings = bookings
+        .filter(b => {
+            if (b.status === 'cancelado') return true;
+            const bDate = new Date(`${b.data}T${b.horario}:00`);
+            return bDate < now;
+        })
+        .sort((a, b) => new Date(`${b.data}T${b.horario}`).getTime() - new Date(`${a.data}T${a.horario}`).getTime());
+
+    const completedBookings = pastBookings.filter(b => b.status === 'confirmado');
     const cancelledBookings = bookings.filter(b => b.status === 'cancelado');
 
     // Calculate days until next booking
