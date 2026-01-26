@@ -22,6 +22,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [exportProgramId, setExportProgramId] = useState<string>('all');
   const [exportDateFrom, setExportDateFrom] = useState<string>('');
   const [exportDateTo, setExportDateTo] = useState<string>('');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
 
   const loadData = async () => {
     setLoading(true);
@@ -34,8 +35,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         getUpcomingBookingsCount()
       ]);
       setPrograms(programsData);
-      setBookings(bookingsData.filter(b => b.status === 'confirmado'));
+      const confirmedBookings = bookingsData.filter(b => b.status === 'confirmado');
+      setBookings(confirmedBookings);
       setUpcomingCount(upcoming);
+
+      // Smart initial date selection
+      if (confirmedBookings.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const futureBookings = confirmedBookings
+          .filter(b => b.data >= today)
+          .sort((a, b) => a.data.localeCompare(b.data));
+
+        if (futureBookings.length > 0) {
+          // If there are bookings today or in the future, select the first available date
+          setSelectedDateFilter(futureBookings[0].data);
+        } else {
+          // Otherwise fall back to the last booking date or today
+          const sortedAll = [...confirmedBookings].sort((a, b) => b.data.localeCompare(a.data));
+          setSelectedDateFilter(sortedAll[0].data);
+        }
+      } else {
+        setSelectedDateFilter(new Date().toISOString().split('T')[0]);
+      }
+
       console.log('AdminDashboard: Data loaded successfully');
     } catch (err: any) {
       console.error('Error loading admin data:', err);
@@ -336,15 +358,53 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
         {activeTab === 'bookings' && (
           <>
-            {bookings.length === 0 ? (
-              <div className="text-center py-12">
-                <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600">event</span>
-                <p className="text-text-muted mt-4">Nenhum agendamento ainda</p>
+            {/* Filter Controls */}
+            <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-white/5 border border-card-border dark:border-white/10 shadow-sm">
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">event_note</span>
+                  Ver Agendamentos de:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={selectedDateFilter}
+                    onChange={(e) => setSelectedDateFilter(e.target.value)}
+                    className="flex-1 px-4 py-3 rounded-xl border border-card-border dark:border-white/10 bg-gray-50 dark:bg-white/10 text-[#131616] dark:text-white outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <button
+                    onClick={() => setSelectedDateFilter(new Date().toISOString().split('T')[0])}
+                    className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-white/5 text-text-muted font-medium hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+                  >
+                    Hoje
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {bookings.filter(b => b.data === selectedDateFilter).length === 0 ? (
+              <div className="text-center py-12 px-6">
+                <div className="size-20 rounded-3xl bg-gray-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600">event_busy</span>
+                </div>
+                <h4 className="font-bold text-[#131616] dark:text-white">Nenhum agendamento</h4>
+                <p className="text-sm text-text-muted mt-2">
+                  {selectedDateFilter === new Date().toISOString().split('T')[0]
+                    ? 'Não há compromissos para hoje.'
+                    : `Não há nada agendado para o dia ${new Date(selectedDateFilter + 'T12:00:00').toLocaleDateString('pt-BR')}.`
+                  }
+                </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-xs font-bold text-text-muted uppercase tracking-widest">
+                    {bookings.filter(b => b.data === selectedDateFilter).length} Resultados
+                  </p>
+                </div>
                 {bookings
-                  .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
+                  .filter(b => b.data === selectedDateFilter)
+                  .sort((a, b) => a.horario.localeCompare(b.horario))
                   .map(booking => {
                     const program = programs.find(p => p.id === booking.programaId);
                     const bookingDate = new Date(`${booking.data}T${booking.horario}:00`);
