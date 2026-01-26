@@ -18,19 +18,21 @@ const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = ({ onNav
         e.preventDefault();
         setErro('');
 
-        if (!email.trim()) {
+        const cleanEmail = email.trim().toLowerCase();
+
+        if (!cleanEmail) {
             setErro('Por favor, informe seu email corporativo');
             return;
         }
 
-        if (!email.includes('@')) {
+        if (!cleanEmail.includes('@')) {
             setErro('Por favor, informe um email válido');
             return;
         }
 
         setLoading(true);
         try {
-            const result = await sendRegistrationLink(email);
+            const result = await sendRegistrationLink(cleanEmail);
 
             if (!result.success) {
                 setErro(result.error || 'Erro ao enviar email');

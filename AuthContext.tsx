@@ -28,6 +28,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
     useEffect(() => {
+        // Safety timeout - force isLoading to false after 8 seconds if init hangs
+        const timeoutId = setTimeout(() => {
+            if (isLoading) {
+                console.warn('Auth initialization timed out, forcing loading to false');
+                setIsLoading(false);
+            }
+        }, 8000);
+
         // Check for existing session on mount
         const initAuth = async () => {
             console.log('initAuth started');
@@ -49,7 +57,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     console.log('Needs completion:', needsCompletion);
                     setNeedsProfileCompletion(needsCompletion);
                 } else {
-                    console.log('No session, setting user to null');
+                    console.log('No session, checking URL for recovery flag');
+                    // Check if we're coming from a reset password link even without a session yet
+                    const params = new URLSearchParams(window.location.search);
+                    if (params.get('reset_password') === 'true' || window.location.hash.includes('type=recovery')) {
+                        console.log('Recovery flag detected in URL');
+                        setIsPasswordRecovery(true);
+                    }
                     setUser(null);
                 }
             } catch (error) {
@@ -57,6 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } finally {
                 console.log('initAuth finished, setting isLoading to false');
                 setIsLoading(false);
+                clearTimeout(timeoutId);
             }
         };
 
@@ -75,6 +90,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     const currentUser = await getCurrentUser(session);
                     setUser(currentUser);
                 }
+                return;
+            }
+
+            // Skip INITIAL_SESSION if we already handled it in initAuth
+            if (event === 'INITIAL_SESSION' && session?.user) {
                 return;
             }
 
@@ -103,6 +123,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         return () => {
             subscription.unsubscribe();
+            clearTimeout(timeoutId);
         };
     }, []);
 

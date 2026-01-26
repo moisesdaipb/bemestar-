@@ -53,8 +53,9 @@ export const getAllCompanies = async (): Promise<Company[]> => {
 // Find company by email domain
 export const getCompanyByEmailDomain = async (email: string): Promise<Company | null> => {
     try {
-        const domain = '@' + email.split('@')[1]?.toLowerCase();
-        if (!domain || domain === '@undefined') return null;
+        const cleanEmail = email.toLowerCase().trim();
+        const domain = '@' + cleanEmail.split('@')[1];
+        if (!domain || domain === '@' || domain === '@undefined') return null;
 
         const { data, error } = await supabase
             .from('companies')
@@ -65,7 +66,7 @@ export const getCompanyByEmailDomain = async (email: string): Promise<Company | 
 
         // Find company that has this domain in their dominios_email array
         const company = data.find((c: DbCompany) =>
-            c.dominios_email?.some((d: string) => d.toLowerCase() === domain)
+            c.dominios_email?.some((d: string) => d.toLowerCase().trim() === domain)
         );
 
         return company ? dbToCompany(company) : null;
@@ -230,18 +231,13 @@ export const checkNeedsProfileCompletion = async (existingUser?: { id: string; e
         }
         if (!user) return false;
 
-        // Check if user came from magic link (has confirmation but no password set)
-        // Supabase sets confirmed_at when email is confirmed
-        // Users who signed up via magic link and haven't set password will have 
-        // email_confirmed_at set but no password in identities
-
+        // Check if user has a password identity
         const hasPasswordIdentity = user.identities?.some(
             identity => identity.provider === 'email'
         );
 
-        // If user confirmed email but doesn't have a traditional email identity,
-        // they came from magic link and need to set password
-        const confirmedViaOtp = user.email_confirmed_at && !hasPasswordIdentity;
+        // If user came from magic link and hasn't set a password yet
+        const confirmedViaOtp = !!user.email_confirmed_at && !hasPasswordIdentity;
 
         // Also check if user's profile has a name
         const { data: profile } = await supabase
@@ -250,10 +246,16 @@ export const checkNeedsProfileCompletion = async (existingUser?: { id: string; e
             .eq('id', user.id)
             .single();
 
-        // Needs completion if: came from magic link OR profile name is empty/generic
-        const needsName = !profile?.nome || profile.nome === 'Usuário' || profile.nome === user.email?.split('@')[0];
+        // Needs completion if: 
+        // 1. confirmed via OTP and has no password OR
+        // 2. profile name is missing or clearly a placeholder (like the email prefix)
+        const emailPrefix = user.email?.split('@')[0];
+        const hasPlaceholderName = !profile?.nome ||
+            profile.nome === 'Usuário' ||
+            profile.nome.toLowerCase().trim() === emailPrefix?.toLowerCase().trim();
 
-        return confirmedViaOtp || needsName;
+        // Only force completion if they REALLY don't have a name and have never set a password
+        return confirmedViaOtp || (hasPlaceholderName && confirmedViaOtp);
     } catch (err) {
         console.error('Check profile completion error:', err);
         return false;
@@ -484,9 +486,8 @@ export const getCurrentUser = async (existingSession?: { user: { id: string; ema
 
             if (!company) {
                 // User's email domain is not registered to any company
-                // Sign them out and return null
+                // Just return null - calling signOut here can cause infinite event loops
                 console.error('Email domain not registered to any company:', user.email);
-                await supabase.auth.signOut();
                 return null;
             }
 

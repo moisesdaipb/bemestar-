@@ -23,14 +23,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
         e.preventDefault();
         setErro('');
 
-        if (!email.trim() || !senha.trim()) {
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanSenha = senha.trim();
+
+        if (!cleanEmail || !cleanSenha) {
             setErro('Por favor, preencha todos os campos');
             return;
         }
 
         setLoading(true);
         try {
-            const result = await login(email, senha);
+            const result = await login(cleanEmail, cleanSenha);
             if (!result.success) {
                 setErro(result.error || 'Erro ao fazer login');
             } else {
@@ -60,13 +63,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
 
     const handleForgotPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!forgotEmail.trim()) {
+        const cleanEmail = forgotEmail.trim().toLowerCase();
+        if (!cleanEmail) {
             return;
         }
 
         setForgotLoading(true);
         try {
-            const result = await resetPasswordForEmail(forgotEmail);
+            const result = await resetPasswordForEmail(cleanEmail);
             if (result.success) {
                 setForgotSuccess(true);
             } else {

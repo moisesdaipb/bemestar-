@@ -23,7 +23,13 @@ import CompanySettings from './components/CompanySettings';
 
 const AppContent: React.FC = () => {
   const { user, isLoading, isAdmin, isSuperAdmin, logout, needsProfileCompletion, markProfileComplete, isPasswordRecovery, clearPasswordRecovery } = useAuth();
-  const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.LOGIN);
+  const [currentScreen, setCurrentScreen] = useState<Screen>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reset_password') === 'true' || window.location.hash.includes('type=recovery')) {
+      return Screen.RESET_PASSWORD;
+    }
+    return Screen.LOGIN;
+  });
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedCompanyForRegister, setSelectedCompanyForRegister] = useState<Company | null>(null);
