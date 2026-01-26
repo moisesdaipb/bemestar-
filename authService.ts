@@ -344,32 +344,30 @@ export const createCompany = async (company: Omit<Company, 'id' | 'criadoEm'>): 
 
 export const updateCompany = async (id: string, updates: Partial<Omit<Company, 'id' | 'criadoEm'>>): Promise<boolean> => {
     try {
-        console.log('Action: updating company', id, 'with updates:', updates);
-        const dbUpdates: Partial<DbCompany> = {};
-        if (updates.nome !== undefined) dbUpdates.nome = updates.nome;
-        if (updates.nomeBanner !== undefined) dbUpdates.nome_banner = updates.nomeBanner;
-        if (updates.slug !== undefined) dbUpdates.slug = updates.slug.toLowerCase().trim();
-        if (updates.logoUrl !== undefined) dbUpdates.logo_url = updates.logoUrl;
-        if (updates.bannerUrl !== undefined) dbUpdates.banner_url = updates.bannerUrl;
-        if (updates.corPrimaria !== undefined) dbUpdates.cor_primaria = updates.corPrimaria;
-        if (updates.corSecundaria !== undefined) dbUpdates.cor_secundaria = updates.corSecundaria;
-        if (updates.dominiosEmail !== undefined) dbUpdates.dominios_email = updates.dominiosEmail;
-        if (updates.ativo !== undefined) dbUpdates.ativo = updates.ativo;
+        console.log('Action: updating company via RPC', id, 'with updates:', updates);
 
-        const { error, status } = await supabase
-            .from('companies')
-            .update(dbUpdates)
-            .eq('id', id);
+        const { data, error } = await supabase.rpc('rpc_update_company', {
+            target_id: id,
+            new_nome: updates.nome,
+            new_nome_banner: updates.nomeBanner,
+            new_slug: updates.slug,
+            new_logo_url: updates.logoUrl,
+            new_banner_url: updates.bannerUrl,
+            new_cor_primaria: updates.corPrimaria,
+            new_cor_secundaria: updates.corSecundaria,
+            new_dominios_email: updates.dominiosEmail,
+            new_ativo: updates.ativo
+        });
 
         if (error) {
-            console.error('Supabase update company error:', error.message, 'Status:', status);
+            console.error('Supabase RPC update company error:', error.message);
             return false;
         }
 
-        console.log('Supabase update company success. Status:', status);
-        return true;
+        console.log('Supabase RPC update company success:', data);
+        return !!data;
     } catch (err) {
-        console.error('Update company exception:', err);
+        console.error('Update company RPC exception:', err);
         return false;
     }
 };
