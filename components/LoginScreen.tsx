@@ -38,7 +38,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
         // Safety timeout - force loading to false after 15 seconds
         const timeoutId = setTimeout(() => {
             setLoading(false);
-            setErro('O login está demorando mais que o esperado. Se você já limpou os dados e continua travado, tente usar uma janela anônima.');
+            setErro('Houve uma demora na conexão com o servidor. Por favor, tente clicar no botão de "Limpar dados" abaixo para destravar seu acesso.');
             setShowResetButton(true);
         }, 15000);
 
