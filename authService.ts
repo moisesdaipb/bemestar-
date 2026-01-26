@@ -100,16 +100,25 @@ export const getCompanyByEmailDomain = async (email: string): Promise<Company | 
         const { data, error } = await supabase
             .from('companies')
             .select('*')
-            .contains('dominios_email', [domain])
             .eq('ativo', true);
 
-        if (error || !data || data.length === 0) {
-            console.log('No company found for domain:', domain);
+        if (error || !data) {
+            console.error('Error fetching companies for domain check:', error);
             return null;
         }
 
-        // Return the first match
-        return dbToCompany(data[0]);
+        const company = data.find((c: any) => {
+            if (!c.dominios_email || !Array.isArray(c.dominios_email)) return false;
+            return c.dominios_email.some((d: string) => {
+                const cleanD = d.toLowerCase().trim();
+                const cleanTarget = domain.toLowerCase().trim();
+                return cleanD === cleanTarget ||
+                    cleanD === cleanTarget.replace('@', '') ||
+                    ('@' + cleanD) === cleanTarget;
+            });
+        });
+
+        return company ? dbToCompany(company) : null;
     } catch (err) {
         console.error('Get company by email domain error:', err);
         return null;
