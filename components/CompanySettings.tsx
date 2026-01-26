@@ -21,12 +21,11 @@ const PRESET_COLORS = [
     '#6366f1', // Indigo
 ];
 
-// Default BemEstar+ colors
 const DEFAULT_PRIMARY = '#22c55e';
-const DEFAULT_SECONDARY = '#0d9488'; // Teal - harmonizes with green
+const DEFAULT_SECONDARY = '#0d9488';
 
 const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => {
-    const { user, refreshUser } = useAuth();
+    const { user, updateUserCompany } = useAuth();
     const [corPrimaria, setCorPrimaria] = useState('#22c55e');
     const [corSecundaria, setCorSecundaria] = useState('#0d9488');
     const [bannerUrl, setBannerUrl] = useState<string | null>(null);
@@ -49,10 +48,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
     const handleAddDomain = () => {
         const domain = novoDominio.trim().toLowerCase();
         if (!domain) return;
-
-        // Ensure it starts with @
         const formattedDomain = domain.startsWith('@') ? domain : '@' + domain;
-
         if (!dominiosEmail.includes(formattedDomain)) {
             setDominiosEmail([...dominiosEmail, formattedDomain]);
         }
@@ -106,20 +102,21 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
         if (!user?.companyId) return;
 
         setSaving(true);
+        console.time('SaveOperation');
 
-        // Safety timeout - unlock button after 15s if no response
+        // Safety timeout - expanded to 45s to handle potentially slow cold starts
         const timeoutId = setTimeout(() => {
             setSaving(prev => {
                 if (prev) {
-                    alert('O servidor está demorando para responder. Verifique sua conexão e tente novamente em instantes.');
+                    alert('O servidor está demorando mais do que o esperado. Se você adicionou muitos domínios ou é o primeiro acesso do dia, isso pode acontecer. Tente aguardar mais alguns segundos ou recarregar a página.');
                 }
                 return false;
             });
-        }, 15000);
+        }, 45000);
 
         try {
-            console.log('UI Action: handleSave company updates', dominiosEmail);
-            const success = await updateCompany(user.companyId, {
+            console.log('UI Action: handleSave initiated');
+            const updatedCompany = await updateCompany(user.companyId, {
                 corPrimaria,
                 corSecundaria,
                 bannerUrl,
@@ -127,17 +124,19 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                 dominiosEmail,
             });
 
+            console.timeEnd('SaveOperation');
             clearTimeout(timeoutId);
 
-            if (success) {
-                // Refresh local user state automatically
-                await refreshUser();
+            if (updatedCompany) {
+                // Instantly update UI state with the returned data
+                updateUserCompany(updatedCompany);
                 alert('Configurações salvas com sucesso! As mudanças já foram aplicadas.');
                 onSave();
             } else {
-                alert('O banco de dados recusou a alteração. Verifique se você tem permissões de administrador.');
+                alert('O banco de dados recusou a alteração. Verifique sua conexão e tente novamente.');
             }
         } catch (error) {
+            console.timeEnd('SaveOperation');
             clearTimeout(timeoutId);
             console.error('Error saving settings:', error);
             alert('Erro inesperado ao salvar configurações.');
@@ -148,7 +147,6 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
 
     return (
         <div className="flex-1 flex flex-col bg-background-light dark:bg-background-dark">
-            {/* Header */}
             <header className="flex items-center gap-3 p-4 pt-6 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-40">
                 <button
                     onClick={onBack}
@@ -162,9 +160,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                 </div>
             </header>
 
-            {/* Content */}
             <div className="flex-1 overflow-auto px-5 pb-8">
-                {/* Preview */}
                 <div className="mt-4 mb-6">
                     <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Pré-visualização</p>
                     <div className="rounded-2xl overflow-hidden shadow-lg">
@@ -194,7 +190,6 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                     </div>
                 </div>
 
-                {/* Banner Upload */}
                 <div className="mb-6">
                     <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Banner (opcional)</p>
                     <div className="p-4 rounded-xl bg-white dark:bg-white/5 border border-card-border dark:border-white/10">
@@ -233,7 +228,6 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                     </div>
                 </div>
 
-                {/* Nome no Banner */}
                 <div className="mb-6">
                     <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Nome no Banner</p>
                     <div className="p-4 rounded-xl bg-white dark:bg-white/5 border border-card-border dark:border-white/10">
@@ -244,96 +238,30 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                             placeholder="Ex: Grupo Marista"
                             className="w-full px-4 py-3 rounded-xl border border-card-border dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[#131616] dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                         />
-                        <p className="text-xs text-text-muted mt-2">
-                            Este texto aparece após "Bem-vindo ao" na tela inicial
-                        </p>
                     </div>
                 </div>
 
-                {/* Primary Color */}
                 <div className="mb-6">
-                    <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Cor Primária</p>
+                    <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Cores da Empresa</p>
                     <div className="grid grid-cols-5 gap-3">
                         {PRESET_COLORS.map(color => (
                             <button
                                 key={color}
                                 onClick={() => setCorPrimaria(color)}
-                                className={`aspect-square rounded-xl transition-all ${corPrimaria === color ? 'ring-4 ring-offset-2 ring-offset-background-light dark:ring-offset-background-dark' : ''}`}
-                                style={{
-                                    backgroundColor: color,
-                                    ringColor: color,
-                                }}
+                                className={`aspect-square rounded-xl transition-all ${corPrimaria === color ? 'ring-4 ring-offset-2 ring-primary' : ''}`}
+                                style={{ backgroundColor: color }}
                             >
-                                {corPrimaria === color && (
-                                    <span className="material-symbols-outlined text-white text-lg">check</span>
-                                )}
+                                {corPrimaria === color && <span className="material-symbols-outlined text-white text-lg">check</span>}
                             </button>
                         ))}
                     </div>
-                    <div className="flex items-center gap-3 mt-3">
-                        <label className="text-sm text-text-muted">Ou escolha:</label>
-                        <input
-                            type="color"
-                            value={corPrimaria}
-                            onChange={e => setCorPrimaria(e.target.value)}
-                            className="size-10 rounded-lg cursor-pointer"
-                        />
-                        <span className="text-sm font-mono text-text-muted">{corPrimaria}</span>
-                    </div>
                 </div>
 
-                {/* Secondary Color */}
-                <div className="mb-6">
-                    <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Cor Secundária (para gradiente)</p>
-                    <div className="grid grid-cols-5 gap-3">
-                        {PRESET_COLORS.map(color => (
-                            <button
-                                key={color}
-                                onClick={() => setCorSecundaria(color)}
-                                className={`aspect-square rounded-xl transition-all ${corSecundaria === color ? 'ring-4 ring-offset-2 ring-offset-background-light dark:ring-offset-background-dark' : ''}`}
-                                style={{
-                                    backgroundColor: color,
-                                    ringColor: color,
-                                }}
-                            >
-                                {corSecundaria === color && (
-                                    <span className="material-symbols-outlined text-white text-lg">check</span>
-                                )}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-3 mt-3">
-                        <label className="text-sm text-text-muted">Ou escolha:</label>
-                        <input
-                            type="color"
-                            value={corSecundaria}
-                            onChange={e => setCorSecundaria(e.target.value)}
-                            className="size-10 rounded-lg cursor-pointer"
-                        />
-                        <span className="text-sm font-mono text-text-muted">{corSecundaria}</span>
-                    </div>
-                </div>
-
-                {/* Gradient Preview */}
-                <div className="mb-8">
-                    <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Gradiente resultante</p>
-                    <div
-                        className="h-16 rounded-xl"
-                        style={{ background: `linear-gradient(135deg, ${corPrimaria}, ${corSecundaria})` }}
-                    ></div>
-                </div>
-
-                {/* Email Domains Section */}
                 <div className="mb-8 p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20">
                     <div className="flex items-center gap-2 mb-4">
                         <span className="material-symbols-outlined text-blue-500">domain</span>
                         <h3 className="text-lg font-bold text-[#131616] dark:text-white">Domínios de Email</h3>
                     </div>
-                    <p className="text-sm text-text-muted mb-4">
-                        Colaboradores com emails destes domínios podem fazer login automaticamente via Microsoft.
-                    </p>
-
-                    {/* Add Domain Input */}
                     <div className="flex gap-2 mb-4">
                         <input
                             type="text"
@@ -341,7 +269,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                             onChange={e => setNovoDominio(e.target.value)}
                             placeholder="@empresa.com.br"
                             onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddDomain())}
-                            className="flex-1 px-4 py-3 rounded-xl border border-card-border dark:border-white/10 bg-white dark:bg-white/5 text-[#131616] dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                            className="flex-1 px-4 py-3 rounded-xl border border-card-border dark:border-white/10 bg-white dark:bg-white/5 text-[#131616] dark:text-white outline-none text-sm"
                         />
                         <button
                             onClick={handleAddDomain}
@@ -352,49 +280,32 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                         </button>
                     </div>
 
-                    {/* Domain List */}
-                    {dominiosEmail.length > 0 ? (
-                        <div className="space-y-2">
-                            {dominiosEmail.map(domain => (
-                                <div
-                                    key={domain}
-                                    className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-white/5 border border-card-border dark:border-white/10"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-blue-500 text-lg">mail</span>
-                                        <span className="font-mono text-sm text-[#131616] dark:text-white">{domain}</span>
-                                    </div>
-                                    <button
-                                        onClick={() => handleRemoveDomain(domain)}
-                                        className="size-8 rounded-lg hover:bg-red-500/10 flex items-center justify-center transition-colors"
-                                    >
-                                        <span className="material-symbols-outlined text-red-500 text-lg">delete</span>
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-4 text-text-muted text-sm">
-                            <span className="material-symbols-outlined text-2xl mb-2 block">domain_add</span>
-                            Nenhum domínio configurado
-                        </div>
-                    )}
+                    <div className="space-y-2">
+                        {dominiosEmail.map(domain => (
+                            <div
+                                key={domain}
+                                className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-white/5 border border-card-border dark:border-white/10"
+                            >
+                                <span className="text-sm font-mono text-[#131616] dark:text-white">{domain}</span>
+                                <button onClick={() => handleRemoveDomain(domain)} className="text-red-500">
+                                    <span className="material-symbols-outlined text-lg">remove_circle</span>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Restore Default Button */}
                 <button
                     onClick={handleRestoreDefaults}
-                    className="w-full py-3 rounded-xl font-semibold text-text-muted bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition-all flex items-center justify-center gap-2 mb-3"
+                    className="w-full py-3 rounded-xl font-semibold text-text-muted bg-gray-100 dark:bg-white/10 mb-4"
                 >
-                    <span className="material-symbols-outlined text-lg">restart_alt</span>
                     Restaurar Padrão
                 </button>
 
-                {/* Save Button */}
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all hover:opacity-90 disabled:opacity-50"
+                    className="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg disabled:opacity-50"
                     style={{ backgroundColor: corPrimaria }}
                 >
                     {saving ? 'Salvando...' : 'Salvar Configurações'}
