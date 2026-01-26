@@ -122,28 +122,33 @@ export const sendRegistrationLink = async (email: string): Promise<{
     company?: Company;
 }> => {
     try {
+        console.log(`[RegFlow] Starting registration for ${email}`);
         const company = await getCompanyByEmailDomain(email);
 
         if (!company) {
+            console.warn(`[RegFlow] Domain not found for ${email}`);
             return {
                 success: false,
                 error: 'Sua empresa não está cadastrada no sistema. Entre em contato com o RH.'
             };
         }
 
+        console.log(`[RegFlow] Company identified: ${company.nome}. Checking if email exists...`);
         const { data: emailExists } = await withTimeout(
             supabase.rpc('check_email_exists', { check_email: email.toLowerCase().trim() }) as any,
             15000,
-            'Tempo esgotado ao verificar email.'
+            'O servidor demorou para verificar se seu e-mail já existe.'
         ) as any;
 
         if (emailExists) {
+            console.log(`[RegFlow] User already exists.`);
             return {
                 success: false,
                 error: 'Este email já está cadastrado. Use a opção de login ou "Esqueci minha senha".'
             };
         }
 
+        console.log(`[RegFlow] Sending Magic Link via Supabase...`);
         const { error } = await withTimeout(
             supabase.auth.signInWithOtp({
                 email: email.toLowerCase().trim(),
@@ -155,18 +160,20 @@ export const sendRegistrationLink = async (email: string): Promise<{
                     }
                 }
             }),
-            30000,
-            'O servidor demorou para responder ao enviar o código de acesso.'
+            40000,
+            'O serviço de e-mail está demorando para responder. Verifique se o e-mail chegou ou tente novamente em instantes.'
         ) as any;
 
         if (error) {
+            console.error(`[RegFlow] Supabase Auth Error:`, error);
             return { success: false, error: `Erro ao enviar email: ${error.message}` };
         }
 
+        console.log(`[RegFlow] Success! Link sent.`);
         return { success: true, company };
     } catch (err: any) {
-        console.error('Send registration link exception:', err);
-        return { success: false, error: err.message || 'Erro inesperado ao processar cadastro.' };
+        console.error('[RegFlow] Exception:', err);
+        return { success: false, error: err.message || 'Erro inesperado ao processar cadastro (Possível oscilação de rede).' };
     }
 };
 
