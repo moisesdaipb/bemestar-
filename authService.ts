@@ -379,12 +379,14 @@ export const login = async (
     senha: string
 ): Promise<{ success: boolean; error?: string; user?: AuthUser }> => {
     try {
+        console.log('Login attempt started for:', email);
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email.toLowerCase().trim(),
             password: senha,
         });
 
         if (error) {
+            console.warn('Supabase signInWithPassword error:', error.message);
             if (error.message.includes('Invalid login credentials')) {
                 return { success: false, error: 'Email ou senha incorretos' };
             }
@@ -392,24 +394,31 @@ export const login = async (
         }
 
         if (!data.user) {
+            console.error('Login successful but no user returned');
             return { success: false, error: 'Erro ao fazer login' };
         }
+        console.log('Supabase login successful for user:', data.user.id);
 
         // Get user profile with company
+        console.log('Fetching user profile...');
         const { data: profile } = await supabase
             .from('profiles')
             .select('*, companies(*)')
             .eq('id', data.user.id)
             .single();
 
+        console.log('Profile fetch result:', profile ? 'found' : 'not found');
+
         // Check if user's company is active (only for non-super_admin)
         if (profile?.role !== 'super_admin' && profile?.companies && !profile.companies.ativo) {
+            console.warn('Company is inactive, signing out');
             await supabase.auth.signOut();
             return { success: false, error: 'Sua empresa está desativada. Entre em contato com o suporte.' };
         }
 
         // Check if user profile is active
         if (profile?.ativo === false) {
+            console.warn('User profile is inactive, signing out');
             await supabase.auth.signOut();
             return { success: false, error: 'Seu acesso foi desativado. Entre em contato com o administrador.' };
         }
@@ -423,9 +432,10 @@ export const login = async (
             company: profile?.companies ? dbToCompany(profile.companies) : null,
         };
 
+        console.log('Login flow completed successfully');
         return { success: true, user: authUser };
     } catch (err) {
-        console.error('Login error:', err);
+        console.error('Login exception:', err);
         return { success: false, error: 'Erro ao fazer login' };
     }
 };

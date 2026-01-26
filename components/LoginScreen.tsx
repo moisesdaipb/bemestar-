@@ -32,14 +32,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
         }
 
         setLoading(true);
+
+        // Safety timeout - force loading to false after 15 seconds
+        const timeoutId = setTimeout(() => {
+            setLoading(false);
+            setErro('O login está demorando mais que o esperado. Por favor, verifique sua conexão ou tente novamente.');
+        }, 15000);
+
         try {
             const result = await login(cleanEmail, cleanSenha);
+
+            // Clear timeout if request finishes
+            clearTimeout(timeoutId);
+
             if (!result.success) {
                 setErro(result.error || 'Erro ao fazer login');
             } else {
                 onNavigate(Screen.HOME);
             }
         } catch (err) {
+            clearTimeout(timeoutId);
             setErro('Erro ao fazer login');
         } finally {
             setLoading(false);
