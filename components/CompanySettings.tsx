@@ -26,7 +26,7 @@ const DEFAULT_PRIMARY = '#22c55e';
 const DEFAULT_SECONDARY = '#0d9488'; // Teal - harmonizes with green
 
 const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [corPrimaria, setCorPrimaria] = useState('#22c55e');
     const [corSecundaria, setCorSecundaria] = useState('#0d9488');
     const [bannerUrl, setBannerUrl] = useState<string | null>(null);
@@ -130,7 +130,9 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
             clearTimeout(timeoutId);
 
             if (success) {
-                alert('Configurações salvas com sucesso! Faça login novamente para ver as mudanças.');
+                // Refresh local user state automatically
+                await refreshUser();
+                alert('Configurações salvas com sucesso! As mudanças já foram aplicadas.');
                 onSave();
             } else {
                 alert('O banco de dados recusou a alteração. Verifique se você tem permissões de administrador.');

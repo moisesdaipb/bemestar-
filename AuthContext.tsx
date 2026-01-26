@@ -15,6 +15,7 @@ interface AuthContextType {
     register: (nome: string, email: string, senha: string, companyId?: string) => Promise<{ success: boolean; error?: string }>;
     loginWithMicrosoft: () => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
+    refreshUser: () => Promise<void>;
     markProfileComplete: () => void;
     clearPasswordRecovery: () => void;
 }
@@ -26,6 +27,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isLoading, setIsLoading] = useState(true);
     const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
     const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+
+    const handleRefreshUser = async () => {
+        try {
+            console.log('Refreshing user data...');
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const currentUser = await getCurrentUser(session);
+                setUser(currentUser);
+            }
+        } catch (error) {
+            console.error('Error refreshing user data:', error);
+        }
+    };
 
     useEffect(() => {
         // Safety timeout - force isLoading to false after 8 seconds if init hangs
@@ -184,6 +198,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 register: handleRegister,
                 loginWithMicrosoft: handleLoginWithMicrosoft,
                 logout: handleLogout,
+                refreshUser: handleRefreshUser,
                 markProfileComplete,
                 clearPasswordRecovery,
             }}
