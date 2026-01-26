@@ -34,6 +34,7 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
     const [novoDominio, setNovoDominio] = useState('');
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [activeColorTab, setActiveColorTab] = useState<'primaria' | 'secundaria'>('primaria');
 
     useEffect(() => {
         if (user?.company) {
@@ -242,18 +243,71 @@ const CompanySettings: React.FC<CompanySettingsProps> = ({ onBack, onSave }) => 
                 </div>
 
                 <div className="mb-6">
-                    <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Cores da Empresa</p>
-                    <div className="grid grid-cols-5 gap-3">
-                        {PRESET_COLORS.map(color => (
-                            <button
-                                key={color}
-                                onClick={() => setCorPrimaria(color)}
-                                className={`aspect-square rounded-xl transition-all ${corPrimaria === color ? 'ring-4 ring-offset-2 ring-primary' : ''}`}
-                                style={{ backgroundColor: color }}
-                            >
-                                {corPrimaria === color && <span className="material-symbols-outlined text-white text-lg">check</span>}
-                            </button>
-                        ))}
+                    <p className="text-sm font-semibold text-[#131616] dark:text-white mb-3">Cores da Identidade</p>
+
+                    {/* Color Tabs */}
+                    <div className="flex gap-2 p-1 bg-gray-100 dark:bg-white/5 rounded-xl mb-4">
+                        <button
+                            onClick={() => setActiveColorTab('primaria')}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeColorTab === 'primaria' ? 'bg-white dark:bg-white/10 shadow-sm text-primary' : 'text-text-muted'}`}
+                        >
+                            Cor Primária
+                        </button>
+                        <button
+                            onClick={() => setActiveColorTab('secundaria')}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeColorTab === 'secundaria' ? 'bg-white dark:bg-white/10 shadow-sm text-primary' : 'text-text-muted'}`}
+                        >
+                            Cor Secundária
+                        </button>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-card-border dark:border-white/10 bg-white dark:bg-white/5">
+                        <div className="grid grid-cols-5 gap-3 mb-4">
+                            {PRESET_COLORS.map(color => (
+                                <button
+                                    key={color}
+                                    onClick={() => activeColorTab === 'primaria' ? setCorPrimaria(color) : setCorSecundaria(color)}
+                                    className={`aspect-square rounded-xl transition-all border-2 ${(activeColorTab === 'primaria' ? corPrimaria : corSecundaria) === color
+                                            ? 'border-primary scale-110 shadow-md'
+                                            : 'border-transparent'
+                                        }`}
+                                    style={{ backgroundColor: color }}
+                                >
+                                    {(activeColorTab === 'primaria' ? corPrimaria : corSecundaria) === color &&
+                                        <span className="material-symbols-outlined text-white text-lg drop-shadow-md">check</span>
+                                    }
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Custom Color Input */}
+                        <div className="flex items-center gap-3 pt-4 border-t border-card-border dark:border-white/10">
+                            <div className="relative size-12 rounded-xl overflow-hidden border border-card-border dark:border-white/10">
+                                <input
+                                    type="color"
+                                    value={activeColorTab === 'primaria' ? corPrimaria : corSecundaria}
+                                    onChange={e => activeColorTab === 'primaria' ? setCorPrimaria(e.target.value) : setCorSecundaria(e.target.value)}
+                                    className="absolute inset-[-5px] size-[calc(100%+10px)] cursor-pointer"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-white mix-blend-difference">
+                                    <span className="material-symbols-outlined text-sm">colorize</span>
+                                </div>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">Código Hexadecimal</p>
+                                <input
+                                    type="text"
+                                    value={activeColorTab === 'primaria' ? corPrimaria : corSecundaria}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        if (activeColorTab === 'primaria') setCorPrimaria(val);
+                                        else setCorSecundaria(val);
+                                    }}
+                                    placeholder="#000000"
+                                    className="w-full px-3 py-1.5 rounded-lg border border-card-border dark:border-white/10 bg-gray-50 dark:bg-white/5 text-sm font-mono text-[#131616] dark:text-white uppercase outline-none focus:border-primary"
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
