@@ -55,13 +55,12 @@ export const clearLocalSession = () => {
 
 // Generic timeout wrapper for promises
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
-    // Wrap promise in a way that satisfies both Promise and PostgrestBuilder if needed
     return Promise.race([
-        promise as any,
+        promise,
         new Promise<T>((_, reject) =>
             setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
         )
-    ]) as Promise<T>;
+    ]);
 };
 
 // ==================== COMPANY FUNCTIONS ====================
@@ -357,18 +356,17 @@ export const updateCompany = async (id: string, updates: Partial<Omit<Company, '
         if (updates.dominiosEmail !== undefined) dbUpdates.dominios_email = updates.dominiosEmail;
         if (updates.ativo !== undefined) dbUpdates.ativo = updates.ativo;
 
-        const { error, data, status } = await supabase
+        const { error, status } = await supabase
             .from('companies')
             .update(dbUpdates)
-            .eq('id', id)
-            .select();
+            .eq('id', id);
 
         if (error) {
             console.error('Supabase update company error:', error.message, 'Status:', status);
             return false;
         }
 
-        console.log('Supabase update company success. Status:', status, 'Data returned:', data);
+        console.log('Supabase update company success. Status:', status);
         return true;
     } catch (err) {
         console.error('Update company exception:', err);
@@ -468,7 +466,7 @@ export const login = async (
                 .from('profiles')
                 .select('*, companies(*)')
                 .eq('id', data.user.id)
-                .single(),
+                .single() as any, // Cast to avoid complex generic issues with build/promise
             15000,
             'Conectado, mas houve demora ao carregar seu perfil.'
         );
@@ -539,7 +537,7 @@ export const logout = async (): Promise<void> => {
     }
 };
 
-export const getCurrentUser = async (existingSession?: { user: { id: string; email?: string; user_metadata?: Record<string, unknown>; email_confirmed_at?: string; identities?: Array<{ provider: string }> } } | null): Promise<AuthUser | null> => {
+export const getCurrentUser = async (existingSession?: any): Promise<AuthUser | null> => {
     try {
         // Use existing session user if provided, otherwise fetch from Supabase
         let user;
