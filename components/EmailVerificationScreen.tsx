@@ -31,8 +31,18 @@ const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = ({ onNav
         }
 
         setLoading(true);
+
+        // Safety timeout - force loading to false after 15 seconds
+        const timeoutId = setTimeout(() => {
+            setLoading(false);
+            setErro('A solicitação está demorando mais que o esperado. Por favor, verifique sua conexão ou tente novamente.');
+        }, 15000);
+
         try {
             const result = await sendRegistrationLink(cleanEmail);
+
+            // Clear timeout if request finishes
+            clearTimeout(timeoutId);
 
             if (!result.success) {
                 setErro(result.error || 'Erro ao enviar email');
@@ -41,6 +51,7 @@ const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = ({ onNav
                 setEmpresa(result.company || null);
             }
         } catch (err) {
+            clearTimeout(timeoutId);
             setErro('Erro ao processar solicitação');
         } finally {
             setLoading(false);

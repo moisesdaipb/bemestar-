@@ -83,17 +83,21 @@ export const sendRegistrationLink = async (email: string): Promise<{
     company?: Company;
 }> => {
     try {
+        console.log('sendRegistrationLink started for:', email);
         // First, check if domain is registered to a company
         const company = await getCompanyByEmailDomain(email);
 
         if (!company) {
+            console.warn('No company found for email domain:', email);
             return {
                 success: false,
                 error: 'Sua empresa não está cadastrada no sistema. Entre em contato com o RH.'
             };
         }
+        console.log('Company found:', company.nome);
 
         // Check if user already exists (using RPC to bypass RLS)
+        console.log('Checking if email exists in profiles...');
         const { data: emailExists, error: checkError } = await supabase
             .rpc('check_email_exists', { check_email: email.toLowerCase().trim() });
 
@@ -101,6 +105,7 @@ export const sendRegistrationLink = async (email: string): Promise<{
             console.error('Check email exists error:', checkError);
             // Continue anyway, the error might be temporary
         } else if (emailExists) {
+            console.log('Email already registered');
             return {
                 success: false,
                 error: 'Este email já está cadastrado. Use a opção de login ou "Esqueci minha senha".'
@@ -108,6 +113,7 @@ export const sendRegistrationLink = async (email: string): Promise<{
         }
 
         // Send magic link for signup
+        console.log('Sending magic link via Supabase OTP...');
         const { error } = await supabase.auth.signInWithOtp({
             email: email.toLowerCase().trim(),
             options: {
@@ -120,14 +126,15 @@ export const sendRegistrationLink = async (email: string): Promise<{
         });
 
         if (error) {
-            console.error('Send registration link error:', error);
-            return { success: false, error: 'Erro ao enviar email. Tente novamente.' };
+            console.error('Supabase OTP error:', error);
+            return { success: false, error: `Erro ao enviar email: ${error.message}` };
         }
 
+        console.log('Magic link sent successfully');
         return { success: true, company };
     } catch (err) {
-        console.error('Send registration link error:', err);
-        return { success: false, error: 'Erro ao enviar email de cadastro.' };
+        console.error('Send registration link exception:', err);
+        return { success: false, error: 'Erro inesperado ao processar cadastro.' };
     }
 };
 
