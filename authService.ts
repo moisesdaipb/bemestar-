@@ -131,8 +131,11 @@ export const sendRegistrationLink = async (email: string): Promise<{
             };
         }
 
-        const { data: emailExists } = await supabase
-            .rpc('check_email_exists', { check_email: email.toLowerCase().trim() });
+        const { data: emailExists } = await withTimeout(
+            supabase.rpc('check_email_exists', { check_email: email.toLowerCase().trim() }) as any,
+            10000,
+            'Tempo esgotado ao verificar email.'
+        );
 
         if (emailExists) {
             return {
@@ -290,7 +293,7 @@ export const updateCompany = async (id: string, updates: Partial<Omit<Company, '
                 new_cor_secundaria: updates.corSecundaria,
                 new_dominios_email: updates.dominiosEmail,
                 new_ativo: updates.ativo
-            }),
+            }) as any,
             30000,
             'O servidor demorou para responder.'
         );
@@ -450,35 +453,48 @@ export const getCurrentUser = async (existingSession?: any): Promise<AuthUser | 
     try {
         let user = existingSession?.user;
         if (!user) {
-            const { data: { user: fetchedUser } } = await supabase.auth.getUser();
+            const { data: { user: fetchedUser } } = await withTimeout(
+                supabase.auth.getUser() as any,
+                10000,
+                'Tempo esgotado ao buscar usuário.'
+            );
             user = fetchedUser;
         }
 
         if (!user) return null;
 
-        let { data: profile } = await supabase
-            .from('profiles')
-            .select('*, companies(*)')
-            .eq('id', user.id)
-            .single();
+        let { data: profile } = await withTimeout(
+            supabase
+                .from('profiles')
+                .select('*, companies(*)')
+                .eq('id', user.id)
+                .single() as any,
+            12000,
+            'Tempo esgotado ao carregar perfil.'
+        );
 
         if (!profile && user.email) {
+            console.log('Profile not found, attempting auto-creation...');
             const company = await getCompanyByEmailDomain(user.email);
             if (!company) return null;
 
             const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0] || 'Usuário';
 
-            const { data: newProfile } = await supabase
-                .from('profiles')
-                .insert({
-                    id: user.id,
-                    nome: userName,
-                    email: user.email,
-                    role: 'user',
-                    company_id: company.id,
-                })
-                .select('*, companies(*)')
-                .single();
+            const { data: newProfile } = await withTimeout(
+                supabase
+                    .from('profiles')
+                    .insert({
+                        id: user.id,
+                        nome: userName,
+                        email: user.email,
+                        role: 'user',
+                        company_id: company.id,
+                    })
+                    .select('*, companies(*)')
+                    .single() as any,
+                10000,
+                'Erro ao criar perfil automaticamente.'
+            );
 
             profile = newProfile;
         }

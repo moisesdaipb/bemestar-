@@ -15,6 +15,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [upcomingCount, setUpcomingCount] = useState(0);
   const [activeTab, setActiveTab] = useState<'programs' | 'bookings'>('programs');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Export modal states
   const [showExportModal, setShowExportModal] = useState(false);
@@ -23,7 +24,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [exportDateTo, setExportDateTo] = useState<string>('');
 
   const loadData = async () => {
+    setLoading(true);
+    setError(null);
     try {
+      console.log('AdminDashboard: Loading data...');
       const [programsData, bookingsData, upcoming] = await Promise.all([
         getPrograms(),
         getBookings(),
@@ -32,8 +36,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       setPrograms(programsData);
       setBookings(bookingsData.filter(b => b.status === 'confirmado'));
       setUpcomingCount(upcoming);
-    } catch (error) {
-      console.error('Error loading data:', error);
+      console.log('AdminDashboard: Data loaded successfully');
+    } catch (err: any) {
+      console.error('Error loading admin data:', err);
+      setError('Houve um atraso na conexão com o servidor. Verifique sua internet.');
     } finally {
       setLoading(false);
     }
@@ -147,6 +153,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             <span className="material-symbols-outlined animate-spin">progress_activity</span>
           </div>
           <p className="text-text-muted">Carregando dados...</p>
+          <p className="text-[10px] text-text-muted/60 mt-4 uppercase tracking-widest">Aguarde alguns segundos</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-background-light dark:bg-background-dark p-6">
+        <div className="text-center">
+          <div className="size-16 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 mx-auto mb-4">
+            <span className="material-symbols-outlined text-4xl">cloud_off</span>
+          </div>
+          <h3 className="text-lg font-bold text-[#131616] dark:text-white mb-2">Conexão Lenta</h3>
+          <p className="text-text-muted mb-6">{error}</p>
+          <button
+            onClick={loadData}
+            className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center gap-2 mx-auto"
+          >
+            <span className="material-symbols-outlined">refresh</span>
+            Tentar Novamente
+          </button>
         </div>
       </div>
     );

@@ -35,6 +35,19 @@ const AppContent: React.FC = () => {
   const [selectedCompanyForRegister, setSelectedCompanyForRegister] = useState<Company | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [prefilledEmail, setPrefilledEmail] = useState<string | null>(null);
+  const [showLoadingRecovery, setShowLoadingRecovery] = useState(false);
+
+  // Watchdog for infinite loading
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setShowLoadingRecovery(true);
+      }, 10000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowLoadingRecovery(false);
+    }
+  }, [isLoading]);
 
   // Redirect to reset password screen if in password recovery mode
   useEffect(() => {
@@ -133,12 +146,37 @@ const AppContent: React.FC = () => {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
-        <div className="text-center">
-          <div className="size-12 rounded-xl bg-primary flex items-center justify-center text-white mx-auto mb-4">
-            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+      <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark p-6">
+        <div className="text-center max-w-xs">
+          <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6 shadow-sm">
+            <span className="material-symbols-outlined animate-spin text-3xl">progress_activity</span>
           </div>
-          <p className="text-text-muted">Carregando...</p>
+          <h2 className="text-xl font-bold text-[#131616] dark:text-white mb-2">Conectando...</h2>
+          <p className="text-text-muted mb-8">Estamos preparando tudo para você. Por favor, aguarde um momento.</p>
+
+          {showLoadingRecovery && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <p className="text-sm text-red-500 mb-4 font-medium">A conexão está demorando mais que o esperado.</p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full py-3 rounded-xl bg-primary text-white font-bold shadow-lg flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined">refresh</span>
+                  Tentar Novamente
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.clear();
+                    window.location.reload();
+                  }}
+                  className="w-full py-3 rounded-xl bg-gray-100 dark:bg-white/5 text-text-muted font-medium"
+                >
+                  Limpar Cache e Reiniciar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

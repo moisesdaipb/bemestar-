@@ -3,6 +3,16 @@ import { Program, Booking, AvailableSlot, TimeSlot } from './types';
 
 // ==================== HELPER FUNCTIONS ====================
 
+// Generic timeout wrapper for promises
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+        )
+    ]);
+};
+
 // Convert database program to frontend Program type
 const dbToProgram = (db: DbProgram): Program => ({
     id: db.id,
@@ -67,33 +77,51 @@ const dbToBooking = (db: DbBooking): Booking => ({
 
 // Get programs - RLS will automatically filter by company
 export const getPrograms = async (): Promise<Program[]> => {
-    const { data, error } = await supabase
-        .from('programs')
-        .select('*')
-        .order('criado_em', { ascending: false });
+    try {
+        const { data, error } = await withTimeout(
+            supabase
+                .from('programs')
+                .select('*')
+                .order('criado_em', { ascending: false }) as any,
+            20000,
+            'Tempo esgotado ao carregar programas.'
+        );
 
-    if (error) {
-        console.error('Error fetching programs:', error);
+        if (error) {
+            console.error('Error fetching programs:', error);
+            return [];
+        }
+
+        return (data || []).map(dbToProgram);
+    } catch (err) {
+        console.error('getPrograms timeout or error:', err);
         return [];
     }
-
-    return (data || []).map(dbToProgram);
 };
 
 // Get active programs for the user's company
 export const getActivePrograms = async (): Promise<Program[]> => {
-    const { data, error } = await supabase
-        .from('programs')
-        .select('*')
-        .eq('ativo', true)
-        .order('criado_em', { ascending: false });
+    try {
+        const { data, error } = await withTimeout(
+            supabase
+                .from('programs')
+                .select('*')
+                .eq('ativo', true)
+                .order('criado_em', { ascending: false }) as any,
+            20000,
+            'Tempo esgotado ao carregar programas ativos.'
+        );
 
-    if (error) {
-        console.error('Error fetching active programs:', error);
+        if (error) {
+            console.error('Error fetching active programs:', error);
+            return [];
+        }
+
+        return (data || []).map(dbToProgram);
+    } catch (err) {
+        console.error('getActivePrograms timeout or error:', err);
         return [];
     }
-
-    return (data || []).map(dbToProgram);
 };
 
 export const getProgramById = async (id: string): Promise<Program | undefined> => {
@@ -130,7 +158,6 @@ export const addProgram = async (
 };
 
 export const updateProgram = async (id: string, updates: Partial<Program>): Promise<Program | null> => {
-    // Convert updates to database format
     const dbUpdates: Record<string, unknown> = {};
 
     if (updates.nome !== undefined) dbUpdates.nome = updates.nome;
@@ -182,19 +209,27 @@ export const deleteProgram = async (id: string): Promise<boolean> => {
 
 // ==================== BOOKINGS ====================
 
-// Get bookings - RLS will automatically filter by company
 export const getBookings = async (): Promise<Booking[]> => {
-    const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('criado_em', { ascending: false });
+    try {
+        const { data, error } = await withTimeout(
+            supabase
+                .from('bookings')
+                .select('*')
+                .order('criado_em', { ascending: false }) as any,
+            20000,
+            'Tempo esgotado ao carregar agendamentos.'
+        );
 
-    if (error) {
-        console.error('Error fetching bookings:', error);
+        if (error) {
+            console.error('Error fetching bookings:', error);
+            return [];
+        }
+
+        return (data || []).map(dbToBooking);
+    } catch (err) {
+        console.error('getBookings timeout or error:', err);
         return [];
     }
-
-    return (data || []).map(dbToBooking);
 };
 
 export const getBookingsByProgram = async (programaId: string): Promise<Booking[]> => {
@@ -232,13 +267,11 @@ export const addBooking = async (
     userId: string,
     companyId: string
 ): Promise<{ success: boolean; booking?: Booking; error?: string }> => {
-    // First, check if slot is still available
     const program = await getProgramById(booking.programaId);
     if (!program) {
         return { success: false, error: 'Programa não encontrado' };
     }
 
-    // Check user's total active bookings limit for this program
     if (program.limitePorUsuario !== null && program.limitePorUsuario > 0) {
         const { data: userTotalBookings, error: totalError } = await supabase
             .rpc('count_user_program_bookings', {
@@ -256,7 +289,6 @@ export const addBooking = async (
         }
     }
 
-    // Check user's bookings for the same day
     if (program.limitePorDiaUsuario !== null && program.limitePorDiaUsuario > 0) {
         const { data: userDayBookings, error: dayError } = await supabase
             .rpc('count_user_date_bookings', {
@@ -275,7 +307,6 @@ export const addBooking = async (
         }
     }
 
-    // Get current bookings for this slot (using RPC to bypass RLS)
     const { data: slotCount, error: countError } = await supabase
         .rpc('count_slot_bookings', {
             p_programa_id: booking.programaId,
@@ -292,7 +323,6 @@ export const addBooking = async (
         return { success: false, error: 'Este horário já está lotado. Por favor, escolha outro horário.' };
     }
 
-    // Check if user already has a booking for this exact slot
     const { data: userExistingBooking } = await supabase
         .from('bookings')
         .select('id')
@@ -307,7 +337,6 @@ export const addBooking = async (
         return { success: false, error: 'Você já tem um agendamento para este horário.' };
     }
 
-    // Insert the booking
     const { data, error } = await supabase
         .from('bookings')
         .insert({
@@ -353,17 +382,15 @@ export const isDateAvailableForProgram = (program: Program, date: Date): boolean
     if (program.tipo === 'recorrente') {
         return program.diasSemana.includes(dayOfWeek);
     } else {
-        // Tipo período
         if (!program.dataInicio || !program.dataFim) return false;
         const start = new Date(program.dataInicio);
         const end = new Date(program.dataFim);
-        const checkDate = new Date(date.toDateString()); // Remove time part
+        const checkDate = new Date(date.toDateString());
         return checkDate >= start && checkDate <= end;
     }
 };
 
 export const getAvailableSlots = async (programaId: string, date: string): Promise<AvailableSlot[]> => {
-    // Use RPC function that bypasses RLS to correctly count all bookings
     const { data, error } = await supabase
         .rpc('get_available_slots', {
             p_programa_id: programaId,
@@ -372,7 +399,6 @@ export const getAvailableSlots = async (programaId: string, date: string): Promi
 
     if (error) {
         console.error('Error getting available slots:', error);
-        // Fallback to old method if RPC fails
         const program = await getProgramById(programaId);
         if (!program) return [];
 
@@ -419,16 +445,25 @@ export const getTotalBookingsToday = async (): Promise<number> => {
 export const getUpcomingBookingsCount = async (): Promise<number> => {
     const today = new Date().toISOString().split('T')[0];
 
-    const { count, error } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .gte('data', today)
-        .eq('status', 'confirmado');
+    try {
+        const { count, error } = await withTimeout(
+            supabase
+                .from('bookings')
+                .select('*', { count: 'exact', head: true })
+                .gte('data', today)
+                .eq('status', 'confirmado') as any,
+            15000,
+            'Tempo esgotado ao contar agendamentos.'
+        );
 
-    if (error) {
-        console.error('Error counting upcoming bookings:', error);
+        if (error) {
+            console.error('Error counting upcoming bookings:', error);
+            return 0;
+        }
+
+        return count || 0;
+    } catch (err) {
+        console.error('getUpcomingBookingsCount timeout or error:', err);
         return 0;
     }
-
-    return count || 0;
 };
