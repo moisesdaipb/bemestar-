@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Screen } from '../types';
 import { useAuth } from '../AuthContext';
-import { resetPasswordForEmail } from '../authService';
+import { resetPasswordForEmail, clearLocalSession } from '../authService';
 
 interface LoginScreenProps {
     onNavigate: (screen: Screen) => void;
@@ -18,10 +18,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotLoading, setForgotLoading] = useState(false);
     const [forgotSuccess, setForgotSuccess] = useState(false);
+    const [showResetButton, setShowResetButton] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setErro('');
+        setShowResetButton(false);
 
         const cleanEmail = email.trim().toLowerCase();
         const cleanSenha = senha.trim();
@@ -36,7 +38,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
         // Safety timeout - force loading to false after 15 seconds
         const timeoutId = setTimeout(() => {
             setLoading(false);
-            setErro('O login está demorando mais que o esperado. Por favor, verifique sua conexão ou tente novamente.');
+            setErro('O login está demorando mais que o esperado. Se você já limpou os dados e continua travado, tente usar uma janela anônima.');
+            setShowResetButton(true);
         }, 15000);
 
         try {
@@ -47,12 +50,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
 
             if (!result.success) {
                 setErro(result.error || 'Erro ao fazer login');
+                // If the error seems connection/session related, show reset button
+                if (result.error?.includes('Tempo esgotado') || result.error?.includes('Conectado, mas')) {
+                    setShowResetButton(true);
+                }
             } else {
                 onNavigate(Screen.HOME);
             }
         } catch (err) {
             clearTimeout(timeoutId);
             setErro('Erro ao fazer login');
+            setShowResetButton(true);
         } finally {
             setLoading(false);
         }
@@ -113,8 +121,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onSelectCompany }
                 </h2>
 
                 {erro && (
-                    <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center">
-                        {erro}
+                    <div className="mb-4">
+                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center">
+                            {erro}
+                        </div>
+                        {showResetButton && (
+                            <button
+                                onClick={clearLocalSession}
+                                className="w-full mt-2 py-2 px-4 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-sm">refresh</span>
+                                Limpar dados e resetar app
+                            </button>
+                        )}
                     </div>
                 )}
 

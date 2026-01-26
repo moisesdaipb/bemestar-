@@ -16,6 +16,46 @@ const dbToCompany = (db: DbCompany): Company => ({
     criadoEm: db.criado_em,
 });
 
+// ==================== SESSION HELPERS ====================
+
+// Clear all local session data to resolve corrupted states
+export const clearLocalSession = async (): Promise<void> => {
+    try {
+        console.log('Force clearing local session data...');
+        // Clear Supabase session (local only to avoid hangs)
+        await supabase.auth.signOut({ scope: 'local' });
+
+        // Clear browser storage
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // Clear specific Supabase keys just in case
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key?.startsWith('sb-')) {
+                localStorage.removeItem(key);
+            }
+        }
+
+        console.log('Session cleanup completed. Reloading...');
+        window.location.reload();
+    } catch (err) {
+        console.error('Error clearing local session:', err);
+        // Fallback to basic reload
+        window.location.reload();
+    }
+};
+
+// Generic timeout wrapper for promises
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+        )
+    ]);
+};
+
 // ==================== COMPANY FUNCTIONS ====================
 
 export const getCompanyBySlug = async (slug: string): Promise<Company | null> => {
@@ -275,7 +315,7 @@ export const createCompany = async (company: Omit<Company, 'id' | 'criadoEm'>): 
             .from('companies')
             .insert({
                 nome: company.nome,
-                nome_banner: company.nomeBanner,
+                nome_banner: company.nome_banner,
                 slug: company.slug.toLowerCase().trim(),
                 logo_url: company.logoUrl,
                 banner_url: company.bannerUrl,
@@ -380,10 +420,16 @@ export const login = async (
 ): Promise<{ success: boolean; error?: string; user?: AuthUser }> => {
     try {
         console.log('Login attempt started for:', email);
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email.toLowerCase().trim(),
-            password: senha,
-        });
+
+        // 1. Authenticate with Supabase (with 20s internal timeout)
+        const { data, error } = await withTimeout(
+            supabase.auth.signInWithPassword({
+                email: email.toLowerCase().trim(),
+                password: senha,
+            }),
+            20000,
+            'Tempo esgotado ao conectar com o servidor.'
+        );
 
         if (error) {
             console.warn('Supabase signInWithPassword error:', error.message);
@@ -399,13 +445,17 @@ export const login = async (
         }
         console.log('Supabase login successful for user:', data.user.id);
 
-        // Get user profile with company
+        // 2. Fetch user profile (with 15s internal timeout)
         console.log('Fetching user profile...');
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('*, companies(*)')
-            .eq('id', data.user.id)
-            .single();
+        const { data: profile } = await withTimeout(
+            supabase
+                .from('profiles')
+                .select('*, companies(*)')
+                .eq('id', data.user.id)
+                .single(),
+            15000,
+            'Conectado, mas houve demora ao carregar seu perfil.'
+        );
 
         console.log('Profile fetch result:', profile ? 'found' : 'not found');
 
@@ -434,9 +484,9 @@ export const login = async (
 
         console.log('Login flow completed successfully');
         return { success: true, user: authUser };
-    } catch (err) {
+    } catch (err: any) {
         console.error('Login exception:', err);
-        return { success: false, error: 'Erro ao fazer login' };
+        return { success: false, error: err.message || 'Erro ao fazer login' };
     }
 };
 
