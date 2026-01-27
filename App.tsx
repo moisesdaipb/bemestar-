@@ -59,9 +59,12 @@ const AppContent: React.FC = () => {
   // Redirect to complete profile if needed
   useEffect(() => {
     if (user && needsProfileCompletion && !isPasswordRecovery) {
-      setCurrentScreen(Screen.COMPLETE_PROFILE);
+      if (currentScreen !== Screen.COMPLETE_PROFILE) {
+        console.log('Forcing redirect to complete profile...');
+        setCurrentScreen(Screen.COMPLETE_PROFILE);
+      }
     }
-  }, [user, needsProfileCompletion, isPasswordRecovery]);
+  }, [user, needsProfileCompletion, isPasswordRecovery, currentScreen]);
 
   // Redirect to home if logged in and on login/register screen
   React.useEffect(() => {

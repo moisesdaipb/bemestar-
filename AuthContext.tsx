@@ -58,13 +58,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const initAuth = async () => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
+                const params = new URLSearchParams(window.location.search);
+                const isRegistering = params.get('register') === 'true' || params.get('type') === 'signup';
+
                 if (session?.user) {
                     const currentUser = await getCurrentUser(session);
                     setUser(currentUser);
                     const needsCompletion = await checkNeedsProfileCompletion(session.user);
-                    setNeedsProfileCompletion(needsCompletion);
+                    setNeedsProfileCompletion(needsCompletion || isRegistering);
                 } else {
-                    const params = new URLSearchParams(window.location.search);
                     if (params.get('reset_password') === 'true' || window.location.hash.includes('type=recovery')) {
                         setIsPasswordRecovery(true);
                     }
@@ -95,9 +97,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (event === 'SIGNED_IN' && session?.user) {
                 const currentUser = await getCurrentUser(session);
                 setUser(currentUser);
+
+                const params = new URLSearchParams(window.location.search);
+                const isRegistering = params.get('register') === 'true';
+
                 if (!isPasswordRecovery) {
                     const needsCompletion = await checkNeedsProfileCompletion(session.user);
-                    setNeedsProfileCompletion(needsCompletion);
+                    setNeedsProfileCompletion(needsCompletion || isRegistering);
                 }
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);

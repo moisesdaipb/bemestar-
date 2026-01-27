@@ -32,8 +32,6 @@ const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = ({ onNav
 
         setLoading(true);
 
-        setLoading(true);
-
         try {
             const result = await sendRegistrationLink(cleanEmail);
 

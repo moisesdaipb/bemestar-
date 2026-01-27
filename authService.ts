@@ -94,33 +94,30 @@ export const getAllCompanies = async (): Promise<Company[]> => {
 export const getCompanyByEmailDomain = async (email: string): Promise<Company | null> => {
     try {
         const cleanEmail = email.toLowerCase().trim();
-        const domain = '@' + cleanEmail.split('@')[1];
-        if (!domain || domain === '@' || domain === '@undefined') return null;
+        const parts = cleanEmail.split('@');
+        if (parts.length < 2) return null;
+
+        const host = parts[parts.length - 1].trim();
 
         const { data, error } = await supabase
             .from('companies')
-            .select('*')
-            .eq('ativo', true);
+            .select('*');
 
-        if (error || !data) {
-            console.error('Error fetching companies for domain check:', error);
-            return null;
-        }
+        if (error || !data) return null;
 
         const company = data.find((c: any) => {
+            if (!c.ativo) return false;
             if (!c.dominios_email || !Array.isArray(c.dominios_email)) return false;
+
             return c.dominios_email.some((d: string) => {
-                const cleanD = d.toLowerCase().trim();
-                const cleanTarget = domain.toLowerCase().trim();
-                return cleanD === cleanTarget ||
-                    cleanD === cleanTarget.replace('@', '') ||
-                    ('@' + cleanD) === cleanTarget;
+                const dbDomain = d.toLowerCase().trim().replace('@', '');
+                return dbDomain === host;
             });
         });
 
         return company ? dbToCompany(company) : null;
     } catch (err) {
-        console.error('Get company by email domain error:', err);
+        console.error('Get company by domain exception:', err);
         return null;
     }
 };
@@ -226,8 +223,9 @@ export const checkNeedsProfileCompletion = async (existingUser?: any | null): Pr
         }
         if (!user) return false;
 
-        const hasPasswordIdentity = user.identities?.some((identity: any) => identity.provider === 'email');
-        const confirmedViaOtp = !!user.email_confirmed_at && !hasPasswordIdentity;
+        // Check for register=true parameter in current URL
+        const params = new URLSearchParams(window.location.search);
+        const isRegistering = params.get('register') === 'true';
 
         const { data: profile } = await supabase
             .from('profiles')
@@ -235,12 +233,19 @@ export const checkNeedsProfileCompletion = async (existingUser?: any | null): Pr
             .eq('id', user.id)
             .single();
 
+        // If explicitly registering via link, or if name is a placeholder/empty
         const emailPrefix = user.email?.split('@')[0];
         const hasPlaceholderName = !profile?.nome ||
             profile.nome === 'Usuário' ||
             profile.nome.toLowerCase().trim() === emailPrefix?.toLowerCase().trim();
 
-        return confirmedViaOtp || (hasPlaceholderName && confirmedViaOtp);
+        // Check if user has a password identity (standard login vs magic link)
+        const hasPasswordIdentity = user.identities?.some((identity: any) => identity.provider === 'email');
+
+        // If they don't have a password identity and are registering, they definitely need completion
+        if (isRegistering && !hasPasswordIdentity) return true;
+
+        return hasPlaceholderName && !hasPasswordIdentity;
     } catch (err) {
         return false;
     }
