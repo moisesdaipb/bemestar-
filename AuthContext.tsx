@@ -57,19 +57,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         const initAuth = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                // Captura parâmetros iniciais antes que o Supabase limpe a URL
                 const params = new URLSearchParams(window.location.search);
-                const isRegistering = params.get('register') === 'true' || params.get('type') === 'signup';
+                const isRegisteringUrl = params.get('register') === 'true' || params.get('type') === 'signup';
+                const isResetUrl = params.get('reset_password') === 'true' || window.location.hash.includes('type=recovery');
+
+                if (isResetUrl) setIsPasswordRecovery(true);
+
+                const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user) {
                     const currentUser = await getCurrentUser(session);
                     setUser(currentUser);
                     const needsCompletion = await checkNeedsProfileCompletion(session.user);
-                    setNeedsProfileCompletion(needsCompletion || isRegistering);
+                    setNeedsProfileCompletion(needsCompletion || isRegisteringUrl);
                 } else {
-                    if (params.get('reset_password') === 'true' || window.location.hash.includes('type=recovery')) {
-                        setIsPasswordRecovery(true);
-                    }
                     setUser(null);
                 }
             } catch (error) {
@@ -83,6 +85,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         initAuth();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('DEBUG: onAuthStateChange event:', event, 'User present:', !!session?.user);
+
             if (event === 'PASSWORD_RECOVERY') {
                 setIsPasswordRecovery(true);
                 if (session?.user) {
@@ -92,26 +96,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 return;
             }
 
-            if (event === 'INITIAL_SESSION' && session?.user) return;
+            if (event === 'INITIAL_SESSION' && session?.user) {
+                console.log('DEBUG: Initial session detected');
+                return;
+            }
 
             if (event === 'SIGNED_IN' && session?.user) {
+                console.log('DEBUG: User SIGNED_IN');
                 const currentUser = await getCurrentUser(session);
                 setUser(currentUser);
 
                 const params = new URLSearchParams(window.location.search);
                 const isRegistering = params.get('register') === 'true';
 
-                if (!isPasswordRecovery) {
-                    const needsCompletion = await checkNeedsProfileCompletion(session.user);
-                    setNeedsProfileCompletion(needsCompletion || isRegistering);
-                }
+                const needsCompletion = await checkNeedsProfileCompletion(session.user);
+                setNeedsProfileCompletion(needsCompletion || isRegistering);
             } else if (event === 'SIGNED_OUT') {
+                console.log('DEBUG: User SIGNED_OUT');
                 setUser(null);
                 setNeedsProfileCompletion(false);
                 setIsPasswordRecovery(false);
             } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+                console.log('DEBUG: Token refreshed');
                 const currentUser = await getCurrentUser(session);
                 setUser(currentUser);
+            } else if (event === 'USER_UPDATED' && session?.user) {
+                console.log('DEBUG: User updated');
             }
         });
 

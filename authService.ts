@@ -223,9 +223,7 @@ export const checkNeedsProfileCompletion = async (existingUser?: any | null): Pr
         }
         if (!user) return false;
 
-        // Check for register=true parameter in current URL
-        const params = new URLSearchParams(window.location.search);
-        const isRegistering = params.get('register') === 'true';
+        console.log('Checking profile completion for:', user.email);
 
         const { data: profile } = await supabase
             .from('profiles')
@@ -233,20 +231,32 @@ export const checkNeedsProfileCompletion = async (existingUser?: any | null): Pr
             .eq('id', user.id)
             .single();
 
-        // If explicitly registering via link, or if name is a placeholder/empty
-        const emailPrefix = user.email?.split('@')[0];
-        const hasPlaceholderName = !profile?.nome ||
-            profile.nome === 'Usuário' ||
-            profile.nome.toLowerCase().trim() === emailPrefix?.toLowerCase().trim();
+        // Se não houver perfil, ele precisa completar
+        if (!profile) return true;
 
-        // Check if user has a password identity (standard login vs magic link)
-        const hasPasswordIdentity = user.identities?.some((identity: any) => identity.provider === 'email');
+        // Limpa o nome do perfil e o prefixo do email para comparação
+        const nomeLimpo = profile.nome ? profile.nome.toLowerCase().trim() : '';
+        const emailPrefix = user.email?.split('@')[0].toLowerCase().trim() || '';
 
-        // If they don't have a password identity and are registering, they definitely need completion
-        if (isRegistering && !hasPasswordIdentity) return true;
+        // Casos em que o perfil é considerado incompleto:
+        // 1. Nome está vazio
+        // 2. Nome é o placeholder padrão 'Usuário'
+        // 3. Nome é igual ao prefixo do email (comum em auto-criação via Microsoft/Link)
+        const hasPlaceholderName = !nomeLimpo ||
+            nomeLimpo === 'usuário' ||
+            nomeLimpo === 'usuario' ||
+            nomeLimpo === emailPrefix;
 
-        return hasPlaceholderName && !hasPasswordIdentity;
+        // Verifica se o usuário tem uma identidade de senha (se não tiver, veio por link/OAuth)
+        const hasPasswordIdentity = user.identities?.some((identity: any) => identity.provider === 'email' && identity.id === user.id);
+
+        // Se tem nome placeholder, ele precisa completar o perfil
+        // Independente de como entrou, se o nome não está definido, queremos que ele defina
+        if (hasPlaceholderName) return true;
+
+        return false;
     } catch (err) {
+        console.error('Error in checkNeedsProfileCompletion:', err);
         return false;
     }
 };

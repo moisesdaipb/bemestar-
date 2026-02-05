@@ -60,7 +60,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (user && needsProfileCompletion && !isPasswordRecovery) {
       if (currentScreen !== Screen.COMPLETE_PROFILE) {
-        console.log('Forcing redirect to complete profile...');
+        console.log('DEBUG: User needs profile completion. Current screen:', currentScreen, 'Target: COMPLETE_PROFILE');
         setCurrentScreen(Screen.COMPLETE_PROFILE);
       }
     }
@@ -68,13 +68,19 @@ const AppContent: React.FC = () => {
 
   // Redirect to home if logged in and on login/register screen
   React.useEffect(() => {
-    // Don't redirect if in reset password or complete profile flow
-    if (isPasswordRecovery || needsProfileCompletion) return;
+    // IMPORTANTE: Bloquear redirecionamentos automáticos se estivermos em fluxos críticos
+    if (isPasswordRecovery || (user && needsProfileCompletion)) {
+      console.log('DEBUG: Auto-redirect blocked. Recovery:', isPasswordRecovery, 'NeedsCompletion:', needsProfileCompletion);
+      return;
+    }
 
     if (user && (currentScreen === Screen.LOGIN || currentScreen === Screen.REGISTER || currentScreen === Screen.SELECT_COMPANY || currentScreen === Screen.EMAIL_VERIFY)) {
+      console.log('DEBUG: User logged in, redirecting to HOME from', currentScreen);
       setCurrentScreen(Screen.HOME);
     }
+
     if (!user && ![Screen.LOGIN, Screen.REGISTER, Screen.SELECT_COMPANY, Screen.EMAIL_VERIFY, Screen.RESET_PASSWORD].includes(currentScreen)) {
+      console.log('DEBUG: No user, redirecting to LOGIN from', currentScreen);
       setCurrentScreen(Screen.LOGIN);
     }
   }, [user, currentScreen, isPasswordRecovery, needsProfileCompletion]);
@@ -136,6 +142,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    if (!window.confirm('Tem certeza que deseja sair do sistema?')) {
+      return;
+    }
     await logout();
     setSelectedCompanyForRegister(null);
     setCurrentScreen(Screen.LOGIN);
